@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Gestor de Empresas</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body class="bg-slate-100 text-slate-800 overflow-hidden h-screen">
+
+    <!-- Container for Views -->
+    <div class="relative h-full w-full">
+
+        <!-- Projects View (NEW Starting Page) -->
+        <div id="projects-view" class="view visible flex flex-col p-4 md:p-8 overflow-y-auto pb-24">
+            <header class="mb-6">
+                <h1 class="text-3xl md:text-4xl font-bold text-slate-900 mb-2">Meus Projetos</h1>
+                <p class="text-slate-600">Arraste para navegar ou selecione para abrir.</p>
+            </header>
+            <div class="card mb-6 bg-gradient-to-r from-blue-500 to-indigo-600 text-white">
+                <h2 class="text-lg font-semibold text-indigo-200">Você tem (Recursos Totais)</h2>
+                <p id="total-balance-projects" class="text-4xl md:text-5xl font-bold tracking-tight">R$ 0,00</p>
+            </div>
+             <div class="flex-grow flex flex-col items-center justify-center min-h-[200px]">
+                <div id="projects-carousel-container" class="relative w-full max-w-md md:max-w-2xl lg:max-w-4xl cursor-grab">
+                    <div class="overflow-hidden">
+                        <div id="projects-carousel-track" class="flex transition-transform duration-300 ease-in-out">
+                            <!-- Project cards will be rendered here -->
+                        </div>
+                    </div>
+                    <!-- Desktop Arrows -->
+                    <button id="projects-prev-btn" class="carousel-arrow absolute left-0 -translate-x-12 p-2 hidden md:flex">&lt;</button>
+                    <button id="projects-next-btn" class="carousel-arrow absolute right-0 translate-x-12 p-2 hidden md:flex">&gt;</button>
+                </div>
+                <div id="projects-carousel-dots" class="flex justify-center gap-2 mt-4 md:hidden"></div>
+            </div>
+             <div class="card mt-6">
+                <h2 class="text-2xl font-bold mb-4">Fontes de Capital</h2>
+                <div id="global-sources-list" class="space-y-4 mb-6"></div>
+            </div>
+        </div>
+
+        <!-- Main View (Sectors) -->
+        <div id="main-view" class="view hidden flex flex-col p-4 md:p-8 overflow-y-auto pb-24">
+            <header class="mb-4 flex justify-between items-start">
+                <div>
+                    <button id="back-to-projects-btn" class="text-sm text-indigo-600 font-semibold mb-2">&larr; Voltar para Projetos</button>
+                    <h1 id="project-title-main" class="text-3xl md:text-4xl font-bold text-slate-900"></h1>
+                </div>
+            </header>
+
+            <div class="card mb-6 bg-gradient-to-r from-blue-500 to-indigo-600 text-white">
+                <div class="flex justify-between items-center">
+                    <div>
+                        <h2 class="text-lg font-semibold text-indigo-200">Resultado do Projeto</h2>
+                        <p id="project-balance" class="text-2xl font-bold tracking-tight">R$ 0,00</p>
+                    </div>
+                    <button id="open-calculator-btn" title="Abrir Calculadora" class="text-white hover:bg-white/20 p-2 rounded-full">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 16 16"><path d="M12 1a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1zM4 0a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V2a2 2 0 0 0-2-2z"/><path d="M4 2.5a.5.5 0 0 1 .5-.5h7a.5.5 0 0 1 .5.5v2a.5.5 0 0 1-.5.5h-7a.5.5 0 0 1-.5-.5zm0 4a.5.5 0 0 1 .5-.5h1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5.5h-1a.5.5 0 0 1-.5-.5zm0 3a.5.5 0 0 1 .5-.5h1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5.5h-1a.5.5 0 0 1-.5-.5zm0 3a.5.5 0 0 1 .5-.5h1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5.5h-1a.5.5 0 0 1-.5-.5zm3-6a.5.5 0 0 1 .5-.5h1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5.5h-1a.5.5 0 0 1-.5-.5zm0 3a.5.5 0 0 1 .5-.5h1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5.5h-1a.5.5 0 0 1-.5-.5zm0 3a.5.5 0 0 1 .5-.5h1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5.5h-1a.5.5 0 0 1-.5-.5zm3-6a.5.5 0 0 1 .5-.5h1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5.5h-1a.5.5 0 0 1-.5-.5zm0 3a.5.5 0 0 1 .5-.5h1a.5.5 0 0 1 .5.5v4a.5.5 0 0 1-.5.5h-1a.5.5 0 0 1-.5-.5z"/></svg>
+                    </button>
+                </div>
+                <div class="mt-2 pt-2 border-t border-white/20">
+                     <h2 class="text-sm font-semibold text-indigo-200">Você tem</h2>
+                     <p id="total-balance" class="text-lg font-bold tracking-tight">R$ 0,00</p>
+                </div>
+            </div>
+            
+            <div class="flex-grow flex flex-col items-center justify-center min-h-[400px]">
+                 <div id="sectors-carousel-container" class="relative w-full max-w-md md:max-w-2xl lg:max-w-4xl cursor-grab">
+                    <div class="overflow-hidden">
+                        <div id="sectors-carousel-track" class="flex transition-transform duration-300 ease-in-out">
+                            <!-- Card 1: Comercial -->
+                            <div class="w-full md:w-1/2 lg:w-1/3 flex-shrink-0 px-2">
+                                <div class="card border-t-4 border-green-500 h-full cursor-pointer" data-sector="Comercial">
+                                    <div class="flex justify-between items-center mb-4">
+                                        <h3 class="font-bold text-xl text-green-700">Comercial</h3>
+                                    </div>
+                                    <div id="comercial-subcategories" class="space-y-4"></div>
+                                    <hr class="my-4">
+                                    <div class="space-y-2 font-semibold">
+                                        <p class="flex justify-between text-sm"><span>TOTAL Receita:</span> <span id="comercial-revenue" class="text-green-600">R$ 0,00</span></p>
+                                        <p class="flex justify-between text-sm"><span>TOTAL Custo:</span> <span id="comercial-investment" class="text-red-600">R$ 0,00</span></p>
+                                        <p class="flex justify-between text-base pt-1 border-t"><span>Resultado:</span> <span id="comercial-net" class="font-bold">R$ 0,00</span></p>
+                                    </div>
+                                </div>
+                            </div>
+                            <!-- Card 2: Operacional -->
+                             <div class="w-full md:w-1/2 lg:w-1/3 flex-shrink-0 px-2">
+                                <div class="card border-t-4 border-yellow-500 h-full cursor-pointer" data-sector="Operacional">
+                                    <div class="flex justify-between items-center mb-4">
+                                        <h3 class="font-bold text-xl text-yellow-700">Operacional</h3>
+                                    </div>
+                                    <div id="operacional-subcategories" class="space-y-4"></div>
+                                    <hr class="my-4">
+                                    <div class="space-y-2 font-semibold">
+                                        <p class="flex justify-between text-sm"><span>TOTAL Receita:</span> <span id="operacional-revenue" class="text-green-600">R$ 0,00</span></p>
+                                        <p class="flex justify-between text-sm"><span>TOTAL Custo:</span> <span id="operacional-investment" class="text-red-600">R$ 0,00</span></p>
+                                        <p class="flex justify-between text-base pt-1 border-t"><span>Resultado:</span> <span id="operacional-net" class="font-bold">R$ 0,00</span></p>
+                                    </div>
+                                </div>
+                            </div>
+                            <!-- Card 3: Financeiro -->
+                            <div class="w-full md:w-1/2 lg:w-1/3 flex-shrink-0 px-2">
+                                <div class="card border-t-4 border-red-500 h-full cursor-pointer" data-sector="Financeiro">
+                                    <div class="flex justify-between items-center mb-4">
+                                        <h3 class="font-bold text-xl text-red-700">Financeiro</h3>
+                                    </div>
+                                    <div id="financeiro-subcategories" class="space-y-4"></div>
+                                    <hr class="my-4">
+                                    <div class="space-y-2 font-semibold">
+                                        <p class="flex justify-between text-sm"><span>TOTAL Receita:</span> <span id="financeiro-revenue" class="text-green-600">R$ 0,00</span></p>
+                                        <p class="flex justify-between text-sm"><span>TOTAL Custo:</span> <span id="financeiro-investment" class="text-red-600">R$ 0,00</span></p>
+                                        <p class="flex justify-between text-base pt-1 border-t"><span>Resultado:</span> <span id="financeiro-net" class="font-bold">R$ 0,00</span></p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                     <!-- Desktop Arrows -->
+                    <button id="sectors-prev-btn" class="carousel-arrow absolute left-0 -translate-x-12 p-2 hidden md:flex">&lt;</button>
+                    <button id="sectors-next-btn" class="carousel-arrow absolute right-0 translate-x-12 p-2 hidden md:flex">&gt;</button>
+                </div>
+                <div id="sectors-carousel-dots" class="flex justify-center gap-2 mt-4 md:hidden"></div>
+            </div>
+        </div>
+
+        <!-- History View -->
+        <div id="history-view" class="view hidden flex-col p-4 md:p-8 overflow-y-auto pb-24 bg-slate-100">
+             <header class="mb-4 flex items-center">
+                 <button id="back-to-main-from-history-btn" class="text-sm text-indigo-600 font-semibold mr-4">&larr; Voltar</button>
+                 <h1 id="history-title" class="text-2xl font-bold text-slate-900">Histórico de Operações</h1>
+            </header>
+            <div class="card">
+                <div class="filters mb-4 grid grid-cols-1 sm:grid-cols-3 gap-2 text-sm">
+                    <input type="date" id="history-filter-date" class="block w-full rounded-md border-slate-300 shadow-sm p-1">
+                    <select id="history-filter-area" class="block w-full rounded-md border-slate-300 shadow-sm p-1">
+                        <option value="">Todas as Áreas</option>
+                    </select>
+                    <select id="history-filter-subcategory" class="block w-full rounded-md border-slate-300 shadow-sm p-1">
+                        <option value="">Todas Subcategorias</option>
+                    </select>
+                </div>
+                <div id="history-operations-list" class="space-y-3 text-sm max-h-[60vh] overflow-y-auto pr-2"></div>
+            </div>
+        </div>
+        
+        <!-- Project Reports View -->
+        <div id="reports-view" class="view hidden flex-col p-4 md:p-8 overflow-y-auto pb-24 bg-slate-100">
+             <header class="mb-4 flex items-center">
+                 <button id="back-to-main-from-reports-btn" class="text-sm text-indigo-600 font-semibold mr-4">&larr; Voltar</button>
+                 <h1 class="text-2xl font-bold text-slate-900">Resultados e Dashboards</h1>
+            </header>
+            <div class="card mb-6">
+                 <div class="flex flex-wrap justify-between items-center mb-4 gap-4">
+                    <h2 class="text-xl font-bold">Performance por Subcategoria</h2>
+                    <div class="flex items-center gap-4">
+                        <div id="project-chart-type-filters" class="flex gap-1">
+                            <button data-type="bar" class="filter-btn bg-white border border-slate-300 px-3 py-1 text-xs rounded-md active">Barras</button>
+                            <button data-type="pie" class="filter-btn bg-white border border-slate-300 px-3 py-1 text-xs rounded-md">Pizza</button>
+                        </div>
+                        <div id="project-chart-filters" class="flex gap-1">
+                            <button data-period="week" class="filter-btn bg-white border border-slate-300 px-3 py-1 text-xs rounded-md">Semana</button>
+                            <button data-period="month" class="filter-btn bg-white border border-slate-300 px-3 py-1 text-xs rounded-md active">Mês</button>
+                            <button data-period="year" class="filter-btn bg-white border border-slate-300 px-3 py-1 text-xs rounded-md">Ano</button>
+                        </div>
+                    </div>
+                </div>
+                <div id="project-charts-grid" class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <!-- Project subcategory charts will be rendered here -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Global Reports View -->
+        <div id="global-reports-view" class="view hidden flex-col p-4 md:p-8 overflow-y-auto pb-24 bg-slate-100">
+             <header class="mb-4 flex items-center">
+                 <button id="back-to-projects-from-global-btn" class="text-sm text-indigo-600 font-semibold mr-4">&larr; Voltar</button>
+                 <h1 class="text-2xl font-bold text-slate-900">Resultados Globais</h1>
+            </header>
+            <div class="card mb-6">
+                <div class="flex flex-wrap justify-between items-center mb-4 gap-4">
+                    <h2 class="text-xl font-bold">Performance por Projeto</h2>
+                    <div class="flex items-center gap-4">
+                        <div id="global-chart-type-filters" class="flex gap-1">
+                            <button data-type="bar" class="filter-btn bg-white border border-slate-300 px-3 py-1 text-xs rounded-md active">Barras</button>
+                            <button data-type="pie" class="filter-btn bg-white border border-slate-300 px-3 py-1 text-xs rounded-md">Pizza</button>
+                        </div>
+                        <div id="global-chart-filters" class="flex gap-1">
+                            <button data-period="week" class="filter-btn bg-white border border-slate-300 px-3 py-1 text-xs rounded-md">Semana</button>
+                            <button data-period="month" class="filter-btn bg-white border border-slate-300 px-3 py-1 text-xs rounded-md active">Mês</button>
+                            <button data-period="year" class="filter-btn bg-white border border-slate-300 px-3 py-1 text-xs rounded-md">Ano</button>
+                        </div>
+                    </div>
+                </div>
+                 <div id="global-charts-grid" class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <!-- Global project charts will be rendered here -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bottom Navigation Bar -->
+    <nav id="bottom-nav" class="fixed bottom-0 left-0 right-0 bg-white shadow-t-md p-2 flex justify-around items-center border-t border-slate-200 z-10">
+        <!-- Buttons will be dynamically shown/hidden here -->
+    </nav>
+    
+    <!-- All Modals -->
+    <div id="add-project-modal" class="modal hidden fixed inset-0 bg-gray-600 bg-opacity-50 z-50 flex items-center justify-center p-4"><div class="card w-full max-w-md"><h2 class="text-2xl font-bold mb-4">Criar Novo Projeto</h2><form id="add-project-form"><input type="text" id="project-name" placeholder="Ex: Expansão Sudeste" required class="mt-1 block w-full rounded-md border-slate-300"><div class="mt-6 flex justify-end gap-4"><button type="button" class="cancel-modal-btn bg-slate-200 text-slate-800 font-bold py-2 px-4 rounded-md">Cancelar</button><button type="submit" class="bg-indigo-600 text-white font-bold py-2 px-4 rounded-md">Criar Projeto</button></div></form></div></div>
+    <div id="add-source-modal" class="modal hidden fixed inset-0 bg-gray-600 bg-opacity-50 z-50 flex items-center justify-center p-4"><div class="card w-full max-w-md"><h2 class="text-2xl font-bold mb-4">Adicionar Fonte de Capital</h2><form id="add-source-form" class="space-y-4"><div><label for="source-name" class="block text-sm font-medium text-slate-700">Nome da Fonte</label><input type="text" id="source-name" required class="mt-1 block w-full rounded-md border-slate-300" placeholder="Ex: Itaú, XP, Investidor Anjo"></div><div><label for="source-type" class="block text-sm font-medium text-slate-700">Tipo</label><select id="source-type" required class="mt-1 block w-full rounded-md border-slate-300"><option>Banco</option><option>Corretora</option><option>Investidor</option><option>Meu Caixa</option><option>Outro</option></select></div><div><label for="initial-balance" class="block text-sm font-medium text-slate-700">Saldo Inicial</label><input type="number" id="initial-balance" step="0.01" required value="0" class="mt-1 block w-full rounded-md border-slate-300"></div><div class="mt-6 flex justify-end gap-4"><button type="button" class="cancel-modal-btn bg-slate-200 py-2 px-4 rounded-md">Cancelar</button><button type="submit" class="bg-indigo-600 text-white py-2 px-4 rounded-md">Salvar</button></div></form></div></div>
+    <div id="add-transaction-modal" class="modal hidden fixed inset-0 bg-gray-600 bg-opacity-50 z-50 flex items-center justify-center p-4"><div class="card w-full max-w-lg h-full max-h-[90vh] overflow-y-auto"><h2 class="text-2xl font-bold mb-4">Adicionar Operação</h2><form id="add-transaction-form" class="space-y-4"></form></div></div>
+    <div id="calculator-modal" class="modal hidden fixed inset-0 bg-gray-600 bg-opacity-50 z-50 flex items-center justify-center p-4"><div class="card w-full max-w-xs text-right relative"><button id="close-calculator-btn" class="absolute top-2 right-2 text-slate-500 hover:text-slate-800 text-2xl leading-none">&times;</button><div id="calculator-display" class="bg-slate-200 rounded p-4 mb-4 text-3xl font-mono truncate">0</div><div id="calculator-grid" class="grid grid-cols-4 gap-2"><button class="bg-slate-200 hover:bg-slate-300 rounded p-4 text-xl font-bold">C</button><button class="bg-slate-200 hover:bg-slate-300 rounded p-4 text-xl font-bold">÷</button><button class="bg-slate-200 hover:bg-slate-300 rounded p-4 text-xl font-bold">×</button><button class="bg-slate-200 hover:bg-slate-300 rounded p-4 text-xl font-bold">-</button><button class="bg-white hover:bg-slate-100 rounded p-4 text-xl">7</button><button class="bg-white hover:bg-slate-100 rounded p-4 text-xl">8</button><button class="bg-white hover:bg-slate-100 rounded p-4 text-xl">9</button><button class="bg-slate-200 hover:bg-slate-300 rounded p-4 text-xl font-bold row-span-2">+</button><button class="bg-white hover:bg-slate-100 rounded p-4 text-xl">4</button><button class="bg-white hover:bg-slate-100 rounded p-4 text-xl">5</button><button class="bg-white hover:bg-slate-100 rounded p-4 text-xl">6</button><button class="bg-white hover:bg-slate-100 rounded p-4 text-xl">1</button><button class="bg-white hover:bg-slate-100 rounded p-4 text-xl">2</button><button class="bg-white hover:bg-slate-100 rounded p-4 text-xl">3</button><button id="calculator-equals" class="bg-indigo-500 hover:bg-indigo-600 text-white rounded p-4 text-xl row-span-2">=</button><button class="bg-white hover:bg-slate-100 rounded p-4 text-xl col-span-2">0</button><button class="bg-white hover:bg-slate-100 rounded p-4 text-xl">.</button></div><button id="copy-calculator-btn" class="w-full mt-2 bg-slate-500 hover:bg-slate-600 text-white py-2 rounded-md text-sm">Copiar</button></div></div>
+    <div id="receipt-modal" class="modal hidden fixed inset-0 bg-gray-600 bg-opacity-50 z-50 flex items-center justify-center p-4"><div class="card w-full max-w-md"><div id="receipt-content"></div><div class="mt-6 flex justify-end gap-4 no-print"><button type="button" class="cancel-modal-btn bg-slate-200 py-2 px-4 rounded-md">Fechar</button><button type="button" id="receipt-print-btn" class="bg-indigo-600 text-white py-2 px-4 rounded-md">Imprimir</button></div></div></div>
+    
+    <script src="script.js"></script>
+</body>
+</html>
