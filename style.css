@@ -1,1 +1,37 @@
+/* Custom scrollbar for better mobile look */
+::-webkit-scrollbar {
+    width: 0;
+    height: 0;
+    background: transparent;
+}
+/* Style for the card carousel */
+.snap-x {
+    scroll-snap-type: x mandatory;
+}
+.snap-center {
+    scroll-snap-align: center;
+}
+/* Ensure the app has a fixed height on mobile */
+body, html {
+    height: 100%;
+    margin: 0;
+    overflow: hidden; /* Prevent body scroll */
+    font-family: 'Inter', sans-serif;
+}
+#app-container {
+    display: flex;
+    flex-direction: column;
+    height: 100vh; /* Full viewport height */
+}
+main {
+    flex-grow: 1;
+    overflow-y: auto; /* Allow main content to scroll */
+}
+.subsector-button {
+    transition: background-color 0.2s, transform 0.2s;
+}
+.subsector-button:active {
+    transform: scale(0.98);
+    background-color: #f0f0f0; /* a light gray for feedback */
+}
 
