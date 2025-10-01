@@ -1,240 +1,220 @@
-// --- DATA MANAGEMENT ---
-let sources = [];
-let projects = [];
-let chartInstance = null;
-let currentProjectId = null;
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestor de Projetos</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Chart.js CDN for graphs -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Link para o seu arquivo de estilos -->
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body class="bg-gray-100 text-gray-800">
 
-// --- UTILITY FUNCTIONS ---
-const formatCurrency = (value) => {
-    return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
-};
+    <div id="app-container">
+        <!-- Top Header: Total Balance (Now Fixed) -->
+        <header class="fixed top-0 left-0 right-0 bg-white p-4 shadow-md z-10">
+            <h2 class="text-sm font-medium text-gray-500">Saldo Total Consolidado</h2>
+            <p id="total-balance" class="text-3xl font-bold text-gray-900">R$ 0,00</p>
+        </header>
 
-const saveData = () => {
-    localStorage.setItem('projectManagerData', JSON.stringify({ sources, projects }));
-};
-
-const loadData = () => {
-    const data = JSON.parse(localStorage.getItem('projectManagerData'));
-    if (data) {
-        sources = data.sources || [];
-        projects = data.projects || [];
-    }
-};
-
-// --- RENDER FUNCTIONS ---
-const renderTotalBalance = () => {
-    const total = sources.reduce((sum, source) => sum + parseFloat(source.balance), 0);
-    document.getElementById('total-balance').textContent = formatCurrency(total);
-};
-
-const renderProjects = () => {
-    const carousel = document.getElementById('project-carousel');
-    carousel.innerHTML = ''; 
-
-    if (projects.length === 0) {
-        carousel.innerHTML = `
-            <div class="flex-shrink-0 w-full max-w-xs mx-auto bg-white rounded-xl shadow-lg flex flex-col items-center justify-center text-center p-6 snap-center aspect-[9/16]">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 text-gray-300 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 13h6m-3-3v6m-9 1V7a2 2 0 012-2h6l2 2h6a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z" /></svg>
-                <h3 class="font-bold text-lg">Nenhum projeto ainda</h3>
-                <p class="text-gray-500">Clique em "Criar Projeto" para começar.</p>
-            </div>`;
-        return;
-    }
-    
-    projects.forEach(project => {
-        const projectCosts = project.transactions.filter(t => t.type === 'cost').reduce((sum, t) => sum + t.amount, 0);
-        const projectRevenue = project.transactions.filter(t => t.type === 'revenue').reduce((sum, t) => sum + t.amount, 0);
-        const projectBalance = projectRevenue - projectCosts;
-        
-        const card = document.createElement('div');
-        card.className = "flex-shrink-0 w-full max-w-xs mx-auto bg-white rounded-xl shadow-lg flex flex-col p-6 snap-center cursor-pointer hover:shadow-xl transition aspect-[9/16]";
-        card.setAttribute('onclick', `switchView('sectors-view', '${project.id}')`);
-        card.innerHTML = `
-            <div class="flex-grow flex flex-col justify-center">
-                <h3 class="font-bold text-2xl text-gray-800">${project.name}</h3>
-                <p class="text-sm text-gray-400 mt-2">Balanço do Projeto</p>
-                <p class="text-4xl font-bold ${projectBalance >= 0 ? 'text-green-500' : 'text-red-500'} mt-2">${formatCurrency(projectBalance)}</p>
+        <!-- Main Content Area (with padding to avoid overlap) -->
+        <main class="pt-24 pb-20">
+            <!-- Home Page View -->
+            <div id="home-view">
+                <div class="p-6">
+                    <h1 class="text-2xl font-bold mb-4">Seus Projetos</h1>
+                    <!-- Project Carousel -->
+                    <div id="project-carousel" class="flex overflow-x-auto gap-4 snap-x pb-4">
+                        <!-- Projects will be inserted here by JS -->
+                    </div>
+                </div>
             </div>
-            <div class="text-xs text-center text-indigo-500 font-semibold mt-4">CLIQUE PARA VER SETORES</div>
-        `;
-        carousel.appendChild(card);
-    });
-};
 
-const renderChart = (period = 'week') => {
-    const ctx = document.getElementById('resultsChart').getContext('2d');
-    const now = new Date();
-    let startDate;
+            <!-- Sectors Page View -->
+            <div id="sectors-view" class="hidden p-6">
+                <div class="flex items-center mb-4 relative">
+                     <button onclick="switchView('home-view')" class="absolute left-0 p-2 text-indigo-600">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+                        </svg>
+                     </button>
+                     <h1 id="sectors-project-name" class="text-2xl font-bold w-full text-center">Nome do Projeto</h1>
+                </div>
+                <p class="text-center text-gray-500 mb-6">Selecione um subsetor para registrar uma operação.</p>
+                <div class="flex overflow-x-auto gap-4 snap-x pb-4">
+                    <!-- Sector Cards with Subsectors -->
+                    <div class="flex-shrink-0 w-full max-w-xs mx-auto bg-white rounded-xl shadow-lg flex flex-col p-6 snap-center aspect-[1080/1220]">
+                        <div class="flex items-center mb-4">
+                            <div class="bg-blue-100 p-3 rounded-full mr-4"><svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 17h8m0 0V9m0 8l-8-8-4 4-6-6"/></svg></div>
+                            <h3 class="text-xl font-bold">Financeiro</h3>
+                        </div>
+                        <div class="flex-grow space-y-2 flex flex-col justify-center">
+                           <button onclick="openTransactionModal('Financeiro', 'Planejamento')" class="subsector-button w-full text-left p-3 rounded-lg border">Planejamento</button>
+                           <button onclick="openTransactionModal('Financeiro', 'Captação')" class="subsector-button w-full text-left p-3 rounded-lg border">Captação</button>
+                           <button onclick="openTransactionModal('Financeiro', 'Recursos')" class="subsector-button w-full text-left p-3 rounded-lg border">Recursos</button>
+                        </div>
+                    </div>
 
-    if (period === 'week') {
-        startDate = new Date(now.setDate(now.getDate() - now.getDay()));
-    } else { // month
-        startDate = new Date(now.getFullYear(), now.getMonth(), 1);
-    }
-    startDate.setHours(0, 0, 0, 0);
+                    <div class="flex-shrink-0 w-full max-w-xs mx-auto bg-white rounded-xl shadow-lg flex flex-col p-6 snap-center aspect-[1080/1220]">
+                         <div class="flex items-center mb-4">
+                            <div class="bg-green-100 p-3 rounded-full mr-4"><svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg></div>
+                            <h3 class="text-xl font-bold">Operacional</h3>
+                        </div>
+                        <div class="flex-grow space-y-2 flex flex-col justify-center">
+                           <button onclick="openTransactionModal('Operacional', 'Treinamento')" class="subsector-button w-full text-left p-3 rounded-lg border">Treinamento</button>
+                           <button onclick="openTransactionModal('Operacional', 'Armazenamento')" class="subsector-button w-full text-left p-3 rounded-lg border">Armazenamento</button>
+                           <button onclick="openTransactionModal('Operacional', 'Produção')" class="subsector-button w-full text-left p-3 rounded-lg border">Produção</button>
+                        </div>
+                    </div>
 
-    const labels = projects.map(p => p.name);
-    const data = projects.map(project => {
-        return project.transactions
-            .filter(t => new Date(t.date) >= startDate)
-            .reduce((balance, t) => balance + (t.type === 'revenue' ? t.amount : -t.amount), 0);
-    });
+                    <div class="flex-shrink-0 w-full max-w-xs mx-auto bg-white rounded-xl shadow-lg flex flex-col p-6 snap-center aspect-[1080/1220]">
+                        <div class="flex items-center mb-4">
+                            <div class="bg-red-100 p-3 rounded-full mr-4"><svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 3.055A9.001 9.001 0 1020.945 13H11V3.055z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.488 9H15V3.512A9.025 9.025 0 0120.488 9z" /></svg></div>
+                            <h3 class="text-xl font-bold">Comercial</h3>
+                        </div>
+                         <div class="flex-grow space-y-2 flex flex-col justify-center">
+                           <button onclick="openTransactionModal('Comercial', 'Marketing')" class="subsector-button w-full text-left p-3 rounded-lg border">Marketing</button>
+                           <button onclick="openTransactionModal('Comercial', 'Relacionamento')" class="subsector-button w-full text-left p-3 rounded-lg border">Relacionamento</button>
+                           <button onclick="openTransactionModal('Comercial', 'Resultados')" class="subsector-button w-full text-left p-3 rounded-lg border">Resultados</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Dashboard/Results Page View (hidden by default) -->
+            <div id="dashboard-view" class="hidden p-6">
+                 <div class="flex items-center mb-4 relative">
+                     <button onclick="switchView('home-view')" class="absolute left-0 p-2 text-indigo-600">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+                        </svg>
+                     </button>
+                     <h1 class="text-2xl font-bold w-full text-center">Resultados</h1>
+                 </div>
+                 <p class="text-gray-500 mb-4 text-center">Eficiência e performance dos seus projetos.</p>
+                 <div class="flex justify-center gap-2 mb-4">
+                     <button onclick="filterChart('week')" class="filter-btn bg-indigo-600 text-white px-4 py-2 rounded-full text-sm font-semibold">Semana</button>
+                     <button onclick="filterChart('month')" class="filter-btn bg-white text-gray-700 px-4 py-2 rounded-full text-sm font-semibold">Mês</button>
+                 </div>
+                 <div class="bg-white p-4 rounded-xl shadow-lg">
+                    <canvas id="resultsChart"></canvas>
+                 </div>
+            </div>
+        </main>
+
+        <!-- Bottom Navigation Bar (Fixed) -->
+        <footer class="fixed bottom-0 left-0 right-0 bg-white shadow-t-lg border-t border-gray-200 p-2 flex justify-around items-center z-10">
+            <button onclick="openModal('source-modal')" class="flex flex-col items-center text-gray-500 hover:text-indigo-600 w-1/3">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
+                <span class="text-xs">Fontes</span>
+            </button>
+             <button onclick="openModal('project-modal')" class="flex flex-col items-center text-gray-500 hover:text-indigo-600 w-1/3">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" /></svg>
+                <span class="text-xs">Criar Projeto</span>
+            </button>
+            <button onclick="switchView('dashboard-view')" class="nav-btn-dash flex flex-col items-center text-gray-500 hover:text-indigo-600 w-1/3">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>
+                <span class="text-xs">Resultados</span>
+            </button>
+        </footer>
+    </div>
+
+
+    <!-- Modals -->
+    <!-- Add Investment Source Modal -->
+    <div id="source-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm">
+            <h2 class="text-xl font-bold mb-4">Nova Fonte de Investimento</h2>
+            <form id="source-form">
+                <div class="mb-4">
+                    <label for="source-name" class="block text-sm font-medium text-gray-600 mb-1">Nome da Fonte</label>
+                    <input type="text" id="source-name" placeholder="Ex: Conta Principal" class="w-full p-2 border border-gray-300 rounded-lg" required>
+                </div>
+                <div class="mb-4">
+                    <label for="source-type" class="block text-sm font-medium text-gray-600 mb-1">Tipo</label>
+                    <select id="source-type" class="w-full p-2 border border-gray-300 rounded-lg" required>
+                        <option>Banco</option>
+                        <option>Corretora</option>
+                        <option>Investidor</option>
+                        <option>Dinheiro Vivo</option>
+                    </select>
+                </div>
+                <div class="mb-4">
+                    <label for="source-balance" class="block text-sm font-medium text-gray-600 mb-1">Saldo Inicial</label>
+                    <input type="number" id="source-balance" placeholder="1000.00" step="0.01" class="w-full p-2 border border-gray-300 rounded-lg" required>
+                </div>
+                <div class="flex justify-end gap-2">
+                    <button type="button" onclick="closeModal('source-modal')" class="px-4 py-2 bg-gray-200 rounded-lg">Cancelar</button>
+                    <button type="submit" class="px-4 py-2 bg-indigo-600 text-white rounded-lg">Adicionar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Add Project Modal -->
+    <div id="project-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm">
+            <h2 class="text-xl font-bold mb-4">Novo Projeto</h2>
+            <form id="project-form">
+                <div class="mb-4">
+                    <label for="project-name" class="block text-sm font-medium text-gray-600 mb-1">Nome do Projeto</label>
+                    <input type="text" id="project-name" placeholder="Ex: Lançamento App Mobile" class="w-full p-2 border border-gray-300 rounded-lg" required>
+                </div>
+                 <div class="flex justify-end gap-2">
+                    <button type="button" onclick="closeModal('project-modal')" class="px-4 py-2 bg-gray-200 rounded-lg">Cancelar</button>
+                    <button type="submit" class="px-4 py-2 bg-indigo-600 text-white rounded-lg">Registrar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Add Transaction Modal -->
+    <div id="transaction-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm">
+            <h2 class="text-xl font-bold mb-2">Adicionar Operação</h2>
+            <h3 id="transaction-project-name" class="text-indigo-600 font-semibold mb-4"></h3>
+            <form id="transaction-form">
+                <input type="hidden" id="transaction-sector">
+                <input type="hidden" id="transaction-subsector">
+                <div class="grid grid-cols-2 gap-4 mb-4">
+                    <div>
+                        <label for="transaction-type" class="block text-sm font-medium text-gray-600 mb-1">Tipo</label>
+                        <select id="transaction-type" class="w-full p-2 border border-gray-300 rounded-lg" required>
+                            <option value="revenue">Receita</option>
+                            <option value="cost">Custo</option>
+                        </select>
+                    </div>
+                     <div>
+                        <label for="transaction-date" class="block text-sm font-medium text-gray-600 mb-1">Data</label>
+                        <input type="date" id="transaction-date" class="w-full p-2 border border-gray-300 rounded-lg" required>
+                    </div>
+                </div>
+                 <div class="mb-4">
+                    <label for="transaction-description" class="block text-sm font-medium text-gray-600 mb-1">Nome da Operação</label>
+                    <input type="text" id="transaction-description" placeholder="Ex: Venda de licença" class="w-full p-2 border border-gray-300 rounded-lg" required>
+                </div>
+                 <div class="mb-4">
+                    <label for="transaction-source" class="block text-sm font-medium text-gray-600 mb-1">Fonte de Investimento</label>
+                    <select id="transaction-source" class="w-full p-2 border border-gray-300 rounded-lg" required>
+                        <!-- Sources will be populated by JS -->
+                    </select>
+                </div>
+                <div class="mb-4">
+                    <label for="transaction-amount" class="block text-sm font-medium text-gray-600 mb-1">Valor</label>
+                    <input type="number" id="transaction-amount" placeholder="500.00" step="0.01" class="w-full p-2 border border-gray-300 rounded-lg" required>
+                </div>
+                <div class="flex justify-end gap-2">
+                    <button type="button" onclick="closeModal('transaction-modal')" class="px-4 py-2 bg-gray-200 rounded-lg">Cancelar</button>
+                    <button type="submit" class="px-4 py-2 bg-indigo-600 text-white rounded-lg">Adicionar</button>
+                </div>
+            </form>
+        </div>
+    </div>
     
-    const backgroundColors = data.map(value => value >= 0 ? 'rgba(75, 192, 192, 0.6)' : 'rgba(255, 99, 132, 0.6)');
-    const borderColors = data.map(value => value >= 0 ? 'rgba(75, 192, 192, 1)' : 'rgba(255, 99, 132, 1)');
-
-    if (chartInstance) chartInstance.destroy();
-
-    chartInstance = new Chart(ctx, {
-        type: 'bar',
-        data: {
-            labels: labels,
-            datasets: [{
-                label: 'Resultado (Receitas - Custos)',
-                data: data,
-                backgroundColor: backgroundColors,
-                borderColor: borderColors,
-                borderWidth: 1
-            }]
-        },
-        options: {
-            scales: { y: { beginAtZero: true } },
-            responsive: true,
-            plugins: { legend: { display: false } }
-        }
-    });
-};
-
-// --- UI CONTROL ---
-const openModal = (modalId) => document.getElementById(modalId).classList.remove('hidden');
-const closeModal = (modalId) => document.getElementById(modalId).classList.add('hidden');
-
-const openTransactionModal = (sector, subSector) => {
-    const project = projects.find(p => p.id === currentProjectId);
-    if (!project) return;
-
-    document.getElementById('transaction-project-name').textContent = `${project.name} / ${sector} / ${subSector}`;
-    document.getElementById('transaction-sector').value = sector;
-    document.getElementById('transaction-subsector').value = subSector;
-    document.getElementById('transaction-date').valueAsDate = new Date();
-    
-    const sourceSelect = document.getElementById('transaction-source');
-    sourceSelect.innerHTML = ''; // Clear old options
-    if (sources.length === 0) {
-         sourceSelect.innerHTML = '<option disabled>Crie uma fonte primeiro</option>';
-    } else {
-        sources.forEach(source => {
-            const option = document.createElement('option');
-            option.value = source.id;
-            option.textContent = `${source.name} (${source.type})`;
-            sourceSelect.appendChild(option);
-        });
-    }
-
-    openModal('transaction-modal');
-};
-
-const switchView = (viewId, projectId = null) => {
-    if (projectId) currentProjectId = projectId;
-    
-    const views = ['home-view', 'dashboard-view', 'sectors-view'];
-    views.forEach(id => document.getElementById(id).classList.add('hidden'));
-    document.getElementById(viewId).classList.remove('hidden');
-
-    const dashBtn = document.querySelector('.nav-btn-dash');
-    
-    dashBtn.classList.toggle('text-indigo-600', viewId === 'dashboard-view');
-    dashBtn.classList.toggle('text-gray-500', viewId !== 'dashboard-view');
-
-    if (viewId === 'dashboard-view') renderChart();
-    if (viewId === 'sectors-view') {
-         const project = projects.find(p => p.id === currentProjectId);
-         if(project) document.getElementById('sectors-project-name').textContent = project.name;
-    }
-};
-
-const filterChart = (period) => {
-    renderChart(period);
-    document.querySelectorAll('.filter-btn').forEach(btn => {
-        btn.classList.remove('bg-indigo-600', 'text-white');
-        btn.classList.add('bg-white', 'text-gray-700');
-    });
-    const activeButton = document.querySelector(`.filter-btn[onclick="filterChart('${period}')"]`);
-    activeButton.classList.add('bg-indigo-600', 'text-white');
-    activeButton.classList.remove('bg-white', 'text-gray-700');
-}
-
-// --- EVENT LISTENERS & INITIALIZATION ---
-document.addEventListener('DOMContentLoaded', () => {
-    loadData();
-    renderTotalBalance();
-    renderProjects();
-
-    // Source Form
-    document.getElementById('source-form').addEventListener('submit', (e) => {
-        e.preventDefault();
-        sources.push({
-            id: `src_${Date.now()}`,
-            name: document.getElementById('source-name').value,
-            type: document.getElementById('source-type').value,
-            balance: parseFloat(document.getElementById('source-balance').value)
-        });
-        saveData();
-        renderTotalBalance();
-        closeModal('source-modal');
-        e.target.reset();
-    });
-
-    // Project Form
-    document.getElementById('project-form').addEventListener('submit', (e) => {
-        e.preventDefault();
-        projects.push({
-            id: `proj_${Date.now()}`,
-            name: document.getElementById('project-name').value,
-            transactions: []
-        });
-        saveData();
-        renderProjects();
-        closeModal('project-modal');
-        e.target.reset();
-    });
-
-    // Transaction Form
-    document.getElementById('transaction-form').addEventListener('submit', (e) => {
-        e.preventDefault();
-        const type = document.getElementById('transaction-type').value;
-        const amount = parseFloat(document.getElementById('transaction-amount').value);
-        const sourceId = document.getElementById('transaction-source').value;
-        
-        const project = projects.find(p => p.id === currentProjectId);
-        const source = sources.find(s => s.id === sourceId);
-
-        if(!project || !source) {
-            alert('Projeto ou fonte de investimento não encontrada.');
-            return;
-        }
-
-        project.transactions.push({
-            type: type,
-            description: document.getElementById('transaction-description').value,
-            amount: amount,
-            sector: document.getElementById('transaction-sector').value,
-            subSector: document.getElementById('transaction-subsector').value,
-            sourceId: sourceId,
-            date: document.getElementById('transaction-date').value
-        });
-        
-        // Update source balance
-        if (type === 'revenue') {
-            source.balance += amount;
-        } else { // cost
-            source.balance -= amount;
-        }
-
-        saveData();
-        renderProjects();
-        renderTotalBalance();
-        closeModal('transaction-modal');
-        e.target.reset();
-    });
-});
+    <!-- Link para o seu arquivo JavaScript -->
+    <script src="script.js"></script>
+</body>
+</html>
