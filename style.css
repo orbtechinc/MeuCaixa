@@ -32,7 +32,7 @@ main {
     background-color: #f0f0f0; /* a light gray for feedback */
 }
 
-/* Styling for the new investment source list */
+/* Styling for the investment source list */
 .source-item {
     display: flex;
     justify-content: space-between;
@@ -42,3 +42,24 @@ main {
     border-radius: 0.75rem;
     box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
 }
+
+/* --- History Page Styles --- */
+.history-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem;
+    background-color: white;
+    border-radius: 0.75rem;
+    box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+    border-left: 5px solid;
+}
+
+.history-item-revenue {
+    border-color: #22c55e; /* green-500 */
+}
+
+.history-item-cost {
+    border-color: #ef4444; /* red-500 */
+}
+
