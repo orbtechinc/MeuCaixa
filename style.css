@@ -31,3 +31,15 @@ main {
     transform: scale(0.98);
     background-color: #f0f0f0; /* a light gray for feedback */
 }
+
+/* Styling for the new investment source list */
+.source-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem;
+    background-color: white;
+    border-radius: 0.75rem;
+    box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+}
+
