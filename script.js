@@ -1,823 +1,946 @@
-function initializeManagerApp() {
-    // --- STATE MANAGEMENT ---
-    let appData = JSON.parse(localStorage.getItem('appData')) || { sources: [], projects: [] };
-    let currentProjectId = null;
-    let currentView = 'projects';
-    let currentSector = null;
-    const subcategories = { Comercial: ['Marketing', 'Relacionamento', 'Vendas'], Operacional: ['Treinamentos', 'Armazenamento', 'Produção'], Financeiro: ['Planejamento', 'Investimento', 'Resultado'] };
-    let chartInstances = {}; 
-    let globalChartType = 'bar';
-    let projectChartType = 'bar';
+// Ativa os ícones do Lucide
+lucide.createIcons();
+
+document.addEventListener('DOMContentLoaded', () => {
+    // --- STATE MANAGEMENT (Dados do App) ---
+    let investments = [];
+    let projects = [];
+    let currentProjectIndex = 0;
+    let currentSectorIndex = 0;
+    let activeProjectId = null;
+    let pendingOperationContext = null;
+    let chartContext = 'projects'; // 'projects' or 'subsectors'
+    let activeFilter = 'anual';
+    let activeHistoryPeriod = 'todos';
+
+    // --- ELEMENT SELECTORS ---
+    const homePage = document.getElementById('home-page');
+    const sectorsPage = document.getElementById('sectors-page');
+    const historyPage = document.getElementById('history-page');
+    const resultsPage = document.getElementById('results-page');
+    const investmentModal = document.getElementById('investment-modal');
+    const projectModal = document.getElementById('project-modal');
+    const operationModal = document.getElementById('operation-modal');
+    const projectChartContainer = document.getElementById('project-chart-container');
+    const subsectorChartsContainer = document.getElementById('subsector-charts-container');
+
+    const totalBalanceEl = document.getElementById('total-balance');
+    const projectCarousel = document.getElementById('project-carousel');
+    const carouselDots = document.getElementById('carousel-dots');
+    const investmentList = document.getElementById('investment-list');
+    const sectorsCarousel = document.getElementById('sectors-carousel');
+    const sectorsCarouselDots = document.getElementById('sectors-carousel-dots');
+    const operationList = document.getElementById('operation-list');
     
-    // --- ELEMENT GETTERS ---
-    const projectsView = document.getElementById('projects-view');
-    const mainView = document.getElementById('main-view');
-    const reportsView = document.getElementById('reports-view');
-    const historyView = document.getElementById('history-view');
-    const globalReportsView = document.getElementById('global-reports-view');
+    const addInvestmentBtn = document.getElementById('add-investment-btn');
+    const addProjectBtn = document.getElementById('add-project-btn');
+    const showHistoryBtn = document.getElementById('show-history-btn');
+    const showResultsBtn = document.getElementById('show-results-btn');
+    const backToHomeBtn = document.getElementById('back-to-home-btn');
+    const backToHomeFromSectorsBtn = document.getElementById('back-to-home-from-sectors-btn');
+    const backToSectorsBtn = document.getElementById('back-to-sectors-btn');
+
+    const investmentForm = document.getElementById('investment-form');
+    const projectForm = document.getElementById('project-form');
+    const operationForm = document.getElementById('operation-form');
     const bottomNav = document.getElementById('bottom-nav');
-    const allModals = document.querySelectorAll('.modal');
-    const cancelModalBtns = document.querySelectorAll('.cancel-modal-btn');
-    const addProjectModal = document.getElementById('add-project-modal');
-    const addSourceModal = document.getElementById('add-source-modal');
-    const addTransactionModal = document.getElementById('add-transaction-modal');
-    const calculatorModal = document.getElementById('calculator-modal');
-    const addProjectForm = document.getElementById('add-project-form');
-    const addSourceForm = document.getElementById('add-source-form');
-    const addTransactionForm = document.getElementById('add-transaction-form');
 
-    // --- HELPER & UTILITY FUNCTIONS ---
-    const formatCurrency = (val) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val);
-    const saveToLocalStorage = () => localStorage.setItem('appData', JSON.stringify(appData));
-    const showModal = (modalEl) => modalEl.classList.remove('hidden');
-    const hideModals = () => allModals.forEach(modal => modal.classList.add('hidden'));
-    const getCurrentProject = () => appData.projects.find(p => p.id === currentProjectId);
 
-    // --- CAROUSEL FACTORY (REVISED) ---
-    function createCarousel(containerId, trackId, dotsId) {
-        const container = document.getElementById(containerId);
-        const track = document.getElementById(trackId);
-        const dotsContainer = document.getElementById(dotsId);
-        if (!container || !track) return { update: () => {} };
-
-        const prevBtn = document.getElementById(`${containerId.split('-')[0]}-prev-btn`);
-        const nextBtn = document.getElementById(`${containerId.split('-')[0]}-next-btn`);
-
-        let state = {
-            currentIndex: 0,
-            totalSlides: 0,
-            isDragging: false,
-            startX: 0,
-            currentTranslate: 0,
-            prevTranslate: 0,
-        };
-
-        function getSlidesInView() {
-            if (window.innerWidth >= 1024) return 3;
-            if (window.innerWidth >= 768) return 2;
-            return 1;
-        }
-
-        function updateUI() {
-            if (state.totalSlides === 0 || !track.children[0]) return;
-
-            const slidesInView = getSlidesInView();
-            const maxIndex = Math.max(0, state.totalSlides - slidesInView);
-
-            state.currentIndex = Math.max(0, Math.min(state.currentIndex, maxIndex));
-            
-            const slideWidth = track.children[0].offsetWidth;
-            state.currentTranslate = state.currentIndex * -slideWidth;
-            state.prevTranslate = state.currentTranslate;
-            
-            track.style.transform = `translateX(${state.currentTranslate}px)`;
-            
-            if (dotsContainer) {
-                dotsContainer.innerHTML = '';
-                for (let i = 0; i < state.totalSlides; i++) {
-                    const dot = document.createElement('div');
-                    dot.classList.add('dot');
-                    if (i === state.currentIndex) dot.classList.add('active');
-                    dotsContainer.appendChild(dot);
-                }
-            }
-
-            if (prevBtn && nextBtn && window.innerWidth >= 768) {
-                 prevBtn.classList.toggle('hidden', state.currentIndex <= 0);
-                 nextBtn.classList.toggle('hidden', state.currentIndex >= maxIndex);
-            }
-        }
-        
-        function move(direction) {
-            state.currentIndex += direction;
-            track.style.transition = 'transform 0.3s ease-in-out';
-            updateUI();
-        }
-
-        function dragStart(e) {
-            state.isDragging = true;
-            container.classList.add('grabbing');
-            state.startX = e.type.includes('touch') ? e.touches[0].clientX : e.clientX;
-            track.style.transition = 'none';
-        }
-
-        function dragMove(e) {
-            if (!state.isDragging) return;
-            e.preventDefault();
-            const currentPosition = e.type.includes('touch') ? e.touches[0].clientX : e.clientX;
-            state.currentTranslate = state.prevTranslate + currentPosition - state.startX;
-            track.style.transform = `translateX(${state.currentTranslate}px)`;
-        }
-        
-        function dragEnd(e) {
-            if (!state.isDragging) return;
-            state.isDragging = false;
-            container.classList.remove('grabbing');
-            const movedBy = state.currentTranslate - state.prevTranslate;
-            
-            const slidesInView = getSlidesInView();
-            const maxIndex = Math.max(0, state.totalSlides - slidesInView);
-
-            if (movedBy < -50 && state.currentIndex < maxIndex) {
-                 move(1);
-            } else if (movedBy > 50 && state.currentIndex > 0) {
-                 move(-1);
-            } else {
-                 track.style.transition = 'transform 0.3s ease-in-out';
-                 track.style.transform = `translateX(${state.prevTranslate}px)`;
-            }
-        }
-
-        container.addEventListener('touchstart', dragStart, { passive: true });
-        container.addEventListener('touchend', dragEnd);
-        container.addEventListener('touchmove', dragMove, { passive: false });
-        container.addEventListener('mousedown', dragStart);
-        container.addEventListener('mouseup', dragEnd);
-        container.addEventListener('mouseleave', dragEnd);
-        container.addEventListener('mousemove', dragMove);
-
-        if(prevBtn) prevBtn.addEventListener('click', () => move(-1));
-        if(nextBtn) nextBtn.addEventListener('click', () => move(1));
-        
-        window.addEventListener('resize', updateUI);
-        
-        return {
-            update: (numSlides) => {
-                state.totalSlides = numSlides > 0 ? numSlides : 0;
-                setTimeout(() => {
-                    state.currentIndex = 0;
-                    updateUI();
-                }, 0);
-            },
-            get currentIndex() { return state.currentIndex; }
-        };
+    // --- MODAL VISIBILITY FUNCTIONS ---
+    function showModal(modal) {
+        modal.classList.remove('invisible', 'opacity-0');
+        modal.querySelector('.modal-content').classList.remove('scale-95');
     }
-    const projectsCarousel = createCarousel('projects-carousel-container', 'projects-carousel-track', 'projects-carousel-dots');
-    const sectorsCarousel = createCarousel('sectors-carousel-container', 'sectors-carousel-track', 'sectors-carousel-dots');
-    
-    // --- CHART FUNCTIONS ---
-    const getDateRange = (period) => {
-        const now = new Date();
-        let start = new Date(now);
-        let end = new Date(now);
+    function hideModal(modal) {
+        modal.classList.add('opacity-0');
+        modal.querySelector('.modal-content').classList.add('scale-95');
+        setTimeout(() => modal.classList.add('invisible'), 300);
+    }
 
-        if (period === 'week') {
-            const day = now.getDay();
-            start.setDate(now.getDate() - day + (day === 0 ? -6 : 1)); 
-            end.setDate(start.getDate() + 6);
-        } else if (period === 'month') {
-            start = new Date(now.getFullYear(), now.getMonth(), 1);
-            end = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-        } else if (period === 'year') {
-            start = new Date(now.getFullYear(), 0, 1);
-            end = new Date(now.getFullYear(), 11, 31);
+    function toggleNavBar(show) {
+        if (show) {
+            bottomNav.classList.remove('hidden');
+        } else {
+            bottomNav.classList.add('hidden');
+        }
+    }
+
+    // --- RENDER FUNCTIONS (Atualizam a UI) ---
+    function updateTotalBalance() {
+        const totalInitialBalance = investments.reduce((sum, inv) => sum + inv.initial_balance, 0);
+
+        let totalRevenue = 0;
+        let totalCost = 0;
+        projects.forEach(project => {
+            project.transactions.forEach(t => {
+                if (t.type === 'revenue') {
+                    totalRevenue += t.amount;
+                } else if (t.type === 'cost') {
+                    totalCost += t.amount;
+                }
+            });
+        });
+
+        const currentTotalBalance = totalInitialBalance + totalRevenue - totalCost;
+
+        totalBalanceEl.textContent = currentTotalBalance.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+        totalBalanceEl.classList.toggle('text-green-400', currentTotalBalance >= 0);
+        totalBalanceEl.classList.toggle('text-red-400', currentTotalBalance < 0);
+    }
+
+    function renderInvestments() {
+        investmentList.innerHTML = '';
+        if (investments.length === 0) {
+            investmentList.innerHTML = `<p class="text-center text-sm text-gray-500 py-4">Nenhuma fonte cadastrada.</p>`;
+            return;
+        }
+
+        const iconMap = {
+            'Bancos': 'landmark',
+            'Corretoras': 'area-chart',
+            'Investidores': 'users',
+            'Dinheiro Vivo': 'wallet'
+        };
+
+        investments.forEach(inv => {
+            let currentSourceBalance = inv.initial_balance;
+            projects.forEach(project => {
+                project.transactions.forEach(t => {
+                    if (t.source === inv.name) {
+                        if (t.type === 'revenue') {
+                            currentSourceBalance += t.amount;
+                        } else if (t.type === 'cost') {
+                            currentSourceBalance -= t.amount;
+                        }
+                    }
+                });
+            });
+
+            const item = document.createElement('div');
+            item.className = 'bg-gray-800/80 p-3 rounded-lg flex justify-between items-center';
+            item.innerHTML = `
+                <div class="flex items-center space-x-3">
+                    <i data-lucide="${iconMap[inv.type] || 'piggy-bank'}" class="w-5 h-5 text-gray-400"></i>
+                    <div>
+                        <p class="font-semibold text-sm">${inv.name}</p>
+                        <p class="text-xs text-gray-500">${inv.type}</p>
+                    </div>
+                </div>
+                <span class="font-bold text-sm ${currentSourceBalance >= 0 ? 'text-green-400' : 'text-red-400'}">${currentSourceBalance.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}</span>
+            `;
+            investmentList.appendChild(item);
+        });
+        lucide.createIcons();
+    }
+
+    function renderProjects() {
+        projectCarousel.innerHTML = '';
+        carouselDots.innerHTML = '';
+        if (projects.length === 0) {
+            projectCarousel.innerHTML = `
+                <div class="w-full flex-shrink-0 h-full flex items-center justify-center">
+                    <div class="text-center text-gray-500">
+                        <i data-lucide="folder-search" class="w-16 h-16 mx-auto mb-2"></i>
+                        <p>Nenhum projeto criado.</p>
+                        <p>Clique em "Novo Projeto" para começar.</p>
+                    </div>
+                </div>
+            `;
+            lucide.createIcons();
+            return;
+        }
+
+        projects.forEach((project, index) => {
+            const projectSlide = document.createElement('div');
+            projectSlide.className = 'w-full flex-shrink-0 h-full flex items-center justify-center';
+
+            const projectCard = document.createElement('div');
+            projectCard.className = 'w-[80%] h-[90%] rounded-2xl shadow-lg cursor-pointer bg-gradient-to-br from-gray-700 to-gray-800 flex flex-col p-4 sm:p-6';
+            projectCard.dataset.projectId = project.id;
+            
+            const revenue = project.transactions.filter(t => t.type === 'revenue').reduce((s, t) => s + t.amount, 0);
+            const cost = project.transactions.filter(t => t.type === 'cost').reduce((s, t) => s + t.amount, 0);
+            const result = revenue - cost;
+            
+            projectCard.innerHTML = `
+                <h3 class="text-2xl font-bold text-white truncate text-center">${project.name}</h3>
+                <div class="flex-grow flex flex-col justify-center items-center">
+                    <span class="text-gray-400">Resultado</span>
+                    <p class="text-4xl sm:text-5xl font-bold ${result >= 0 ? 'text-green-400' : 'text-red-400'}">
+                        ${result.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                    </p>
+                </div>
+            `;
+
+            projectCard.addEventListener('click', () => openSectorsPage(project.id));
+            
+            projectSlide.appendChild(projectCard);
+            projectCarousel.appendChild(projectSlide);
+
+            const dot = document.createElement('div');
+            dot.className = `w-2 h-2 rounded-full transition-colors ${index === currentProjectIndex ? 'bg-indigo-500' : 'bg-gray-600'}`;
+            dot.dataset.index = index;
+            carouselDots.appendChild(dot);
+        });
+
+        lucide.createIcons();
+        updateCarouselPosition();
+    }
+
+    function renderOperations(project) {
+        operationList.innerHTML = '';
+
+        // Get filter values
+        const selectedSector = document.getElementById('history-sector-filter').value;
+        const selectedSubSector = document.getElementById('history-subsector-filter').value;
+        
+        const now = new Date();
+        let startDate;
+        switch (activeHistoryPeriod) {
+            case 'semana':
+                startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 6);
+                break;
+            case 'mes':
+                startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+                break;
+            case 'anual':
+                startDate = new Date(now.getFullYear(), 0, 1);
+                break;
+            case 'todos':
+            default:
+                startDate = null; // No date filter
+                break;
+        }
+        if(startDate) startDate.setHours(0,0,0,0);
+
+        let filteredTransactions = project.transactions.filter(op => {
+            const opDate = new Date(op.date);
+            opDate.setMinutes(opDate.getMinutes() + opDate.getTimezoneOffset());
+
+            const periodMatch = !startDate || opDate >= startDate;
+            const sectorMatch = selectedSector === 'todos' || op.sector === selectedSector;
+            const subSectorMatch = selectedSubSector === 'todos' || op.subsector === selectedSubSector;
+
+            return periodMatch && sectorMatch && subSectorMatch;
+        });
+
+        if (filteredTransactions.length === 0) {
+            operationList.innerHTML = `
+                <div class="text-center text-gray-500 pt-16">
+                    <i data-lucide="search-x" class="w-16 h-16 mx-auto mb-2"></i>
+                    <p>Nenhuma operação encontrada com os filtros selecionados.</p>
+                </div>
+            `;
+            lucide.createIcons();
+            return;
+        }
+
+        const sortedTransactions = filteredTransactions.sort((a, b) => new Date(b.date) - new Date(a.date));
+
+        sortedTransactions.forEach(op => {
+            const isRevenue = op.type === 'revenue';
+            const item = document.createElement('div');
+            item.className = 'bg-gray-800 p-3 rounded-lg flex items-center';
+            item.innerHTML = `
+                <div class="mr-3 p-2 rounded-full ${isRevenue ? 'bg-green-500/20' : 'bg-red-500/20'}">
+                    <i data-lucide="${isRevenue ? 'arrow-up-right' : 'arrow-down-left'}" class="w-5 h-5 ${isRevenue ? 'text-green-400' : 'text-red-400'}"></i>
+                </div>
+                <div class="flex-grow">
+                    <div class="flex justify-between items-center">
+                        <p class="font-bold truncate pr-2">${op.name}</p>
+                        <p class="font-bold text-sm ${isRevenue ? 'text-green-400' : 'text-red-400'}">
+                            ${isRevenue ? '+' : '-'} ${op.amount.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                        </p>
+                    </div>
+                    <div class="flex justify-between items-center text-xs text-gray-400 mt-1">
+                        <span>${new Date(op.date).toLocaleDateString('pt-BR', {timeZone: 'UTC'})}</span>
+                        <span>${op.sector} / ${op.subsector}</span>
+                    </div>
+                </div>
+            `;
+            operationList.appendChild(item);
+        });
+        lucide.createIcons();
+    }
+
+
+    // --- PAGE NAVIGATION & LOGIC ---
+    function updateNav(page) {
+        if (page === 'sectors') {
+            addProjectBtn.classList.add('hidden');
+            showHistoryBtn.classList.remove('hidden');
+        } else { // 'home', 'results', 'history' etc. all revert to home nav
+            addProjectBtn.classList.remove('hidden');
+            showHistoryBtn.classList.add('hidden');
+        }
+    }
+
+    function openSectorsPage(projectId) {
+        activeProjectId = projectId;
+        const project = projects.find(p => p.id == projectId);
+        if (!project) return;
+        
+        document.getElementById('sectors-project-name').textContent = project.name;
+        
+        const sectorIdMap = {
+            'Financeiro': 'finance',
+            'Operacional': 'operational',
+            'Comercial': 'commercial'
+        };
+
+        Object.keys(sectorIdMap).forEach(sectorName => {
+            const sectorTransactions = project.transactions.filter(t => t.sector === sectorName);
+            const revenue = sectorTransactions.filter(t => t.type === 'revenue').reduce((s, t) => s + t.amount, 0);
+            const cost = sectorTransactions.filter(t => t.type === 'cost').reduce((s, t) => s + t.amount, 0);
+            const result = revenue - cost;
+
+            const sectorId = sectorIdMap[sectorName];
+            document.getElementById(`${sectorId}-revenue`).textContent = `+ ${revenue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}`;
+            document.getElementById(`${sectorId}-cost`).textContent = `- ${cost.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}`;
+            const resultEl = document.getElementById(`${sectorId}-result`);
+            resultEl.textContent = result.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+            resultEl.className = `font-bold ${result >= 0 ? 'text-green-400' : 'text-red-400'}`;
+        });
+        
+        homePage.classList.add('hidden');
+        historyPage.classList.add('hidden');
+        resultsPage.classList.add('hidden');
+        sectorsPage.classList.remove('hidden');
+        sectorsPage.classList.add('flex');
+        updateNav('sectors');
+        initializeSectorCarousel();
+    }
+
+    function openHistoryPage(projectId) {
+        const project = projects.find(p => p.id == projectId);
+        if (!project) return;
+
+        document.getElementById('history-project-name').textContent = project.name;
+        
+        homePage.classList.add('hidden');
+        sectorsPage.classList.add('hidden');
+        resultsPage.classList.add('hidden');
+        historyPage.classList.remove('hidden');
+        historyPage.classList.add('flex');
+        toggleNavBar(false);
+
+        renderOperations(project);
+    }
+
+    function openOperationModal(sector, subsector) {
+        document.getElementById('operation-sector-label').textContent = sector;
+        document.getElementById('operation-subsector-label').textContent = subsector;
+        document.getElementById('operation-sector').value = sector;
+        document.getElementById('operation-subsector').value = subsector;
+
+        const sourceSelect = document.getElementById('operation-source');
+        sourceSelect.innerHTML = '';
+
+        if (investments.length === 0) {
+            sourceSelect.innerHTML = `<option value="" disabled selected>Nenhuma fonte cadastrada</option>`;
+        } else {
+            investments.forEach(inv => {
+                const option = document.createElement('option');
+                option.value = inv.name;
+                option.textContent = `${inv.name} (${inv.type})`;
+                sourceSelect.appendChild(option);
+            });
         }
         
-        start.setHours(0, 0, 0, 0);
-        end.setHours(23, 59, 59, 999);
-        return { start, end };
-    };
+        const addNewOption = document.createElement('option');
+        addNewOption.value = 'add_new';
+        addNewOption.textContent = '＋ Adicionar nova fonte...';
+        addNewOption.className = 'text-indigo-400 font-bold';
+        sourceSelect.appendChild(addNewOption);
+        
+        document.getElementById('operation-date').valueAsDate = new Date();
+        showModal(operationModal);
+    }
 
-    const renderChart = (canvasId, chartKey, type, labels, data) => {
-        const canvas = document.getElementById(canvasId);
-        if (!canvas) return;
-        const ctx = canvas.getContext('2d');
-        if (chartInstances[chartKey]) {
-            chartInstances[chartKey].destroy();
+    // --- EVENT LISTENERS ---
+    addInvestmentBtn.addEventListener('click', () => showModal(investmentModal));
+    document.getElementById('cancel-investment').addEventListener('click', () => {
+        if (pendingOperationContext) {
+            hideModal(investmentModal);
+            openOperationModal(pendingOperationContext.sector, pendingOperationContext.subsector);
+            pendingOperationContext = null;
+        } else {
+            hideModal(investmentModal);
+        }
+    });
+    
+    addProjectBtn.addEventListener('click', () => {
+        document.getElementById('project-modal').querySelector('h2').textContent = 'Novo Projeto';
+        showModal(projectModal)
+    });
+    document.getElementById('cancel-project').addEventListener('click', () => hideModal(projectModal));
+    
+    document.getElementById('cancel-operation').addEventListener('click', () => hideModal(operationModal));
+
+    sectorsCarousel.addEventListener('click', (e) => {
+        const card = e.target.closest('.sub-sector-card');
+        if (card) {
+            const { sector, subsector } = card.dataset;
+            openOperationModal(sector, subsector);
+        }
+    });
+
+    showHistoryBtn.addEventListener('click', () => {
+        if (activeProjectId) {
+            openHistoryPage(activeProjectId);
+        }
+    });
+
+    document.getElementById('operation-source').addEventListener('change', (e) => {
+        if (e.target.value === 'add_new') {
+            pendingOperationContext = {
+                sector: document.getElementById('operation-sector').value,
+                subsector: document.getElementById('operation-subsector').value,
+            };
+            e.target.value = ''; 
+            hideModal(operationModal);
+            showModal(investmentModal);
+        }
+    });
+
+    [investmentModal, projectModal, operationModal].forEach(modal => {
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) hideModal(modal);
+        });
+    });
+
+    showResultsBtn.addEventListener('click', () => {
+        if (!sectorsPage.classList.contains('hidden')) {
+            chartContext = 'subsectors';
+        } else {
+            chartContext = 'projects';
         }
 
-        if (type === 'bar') {
-             const chartData = (typeof data[0] === 'object') ? data.map(d => d.value) : data;
-             const backgroundColors = chartData.map(value => value >= 0 ? 'rgba(34, 197, 94, 0.6)' : 'rgba(239, 68, 68, 0.6)');
-             const borderColors = chartData.map(value => value >= 0 ? 'rgba(34, 197, 94, 1)' : 'rgba(239, 68, 68, 1)');
-             chartInstances[chartKey] = new Chart(ctx, {
-                type: 'bar',
-                data: {
-                    labels: labels,
-                    datasets: [{
-                        label: 'Resultado Líquido',
-                        data: chartData,
-                        backgroundColor: backgroundColors,
-                        borderColor: borderColors,
-                        borderWidth: 1
-                    }]
-                },
-                options: { scales: { y: { beginAtZero: false } } }
+        homePage.classList.add('hidden');
+        sectorsPage.classList.add('hidden');
+        historyPage.classList.add('hidden');
+        resultsPage.classList.remove('hidden');
+        resultsPage.classList.add('flex');
+        toggleNavBar(false);
+        renderActiveChart();
+    });
+    
+    const filterButtons = document.querySelectorAll('.filter-btn');
+    filterButtons.forEach(button => {
+        button.addEventListener('click', () => {
+            filterButtons.forEach(btn => {
+                btn.classList.remove('bg-indigo-600');
+                btn.classList.add('bg-gray-700', 'hover:bg-gray-600');
             });
-        } else if (type === 'pie') {
-            const positiveData = data.filter(d => d.value > 0);
+            button.classList.add('bg-indigo-600');
+            button.classList.remove('bg-gray-700', 'hover:bg-gray-600');
+
+            activeFilter = button.dataset.filter;
+            renderActiveChart();
+        });
+    });
+
+    backToHomeBtn.addEventListener('click', () => {
+        resultsPage.classList.add('hidden');
+        resultsPage.classList.remove('flex');
+        toggleNavBar(true);
+        if (chartContext === 'subsectors' && activeProjectId) {
+            openSectorsPage(activeProjectId);
+        } else {
+            homePage.classList.remove('hidden');
+            homePage.classList.add('flex');
+            updateNav('home');
+        }
+    });
+    backToHomeFromSectorsBtn.addEventListener('click', () => {
+        sectorsPage.classList.add('hidden');
+        sectorsPage.classList.remove('flex');
+        homePage.classList.remove('hidden');
+        homePage.classList.add('flex');
+        renderProjects();
+        updateNav('home');
+        toggleNavBar(true);
+    });
+    backToSectorsBtn.addEventListener('click', () => {
+        historyPage.classList.add('hidden');
+        historyPage.classList.remove('flex');
+        toggleNavBar(true);
+        openSectorsPage(activeProjectId);
+    });
+    
+    investmentForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+        const newInvestment = {
+            type: document.getElementById('investment-type').value,
+            name: document.getElementById('investment-name').value,
+            initial_balance: parseFloat(document.getElementById('investment-balance').value) || 0
+        };
+        if(newInvestment.name) {
+            investments.push(newInvestment);
+            updateTotalBalance();
+            renderInvestments();
+            investmentForm.reset();
             
-             if (positiveData.length === 0) {
-                ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
-                ctx.font = "14px Inter";
-                ctx.fillStyle = "#64748b";
-                ctx.textAlign = "center";
-                ctx.fillText("Nenhum resultado positivo para exibir.", ctx.canvas.width / 2, ctx.canvas.height / 2);
-                return;
+            if (pendingOperationContext) {
+                hideModal(investmentModal);
+                openOperationModal(pendingOperationContext.sector, pendingOperationContext.subsector);
+                pendingOperationContext = null; 
+            } else {
+                hideModal(investmentModal);
+            }
+        }
+    });
+
+    projectForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+        const projectName = document.getElementById('project-name').value;
+        if(projectName) {
+            const newProject = {
+                id: Date.now(),
+                name: projectName,
+                transactions: []
+            };
+            projects.push(newProject);
+            currentProjectIndex = projects.length - 1;
+            renderProjects();
+            projectForm.reset();
+            hideModal(projectModal);
+        }
+    });
+
+    operationForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+        const project = projects.find(p => p.id == activeProjectId);
+        if (!project) return;
+        
+        const newTransaction = {
+            id: Date.now(),
+            name: document.getElementById('operation-name').value,
+            date: document.getElementById('operation-date').value,
+            type: document.getElementById('operation-type').value,
+            amount: parseFloat(document.getElementById('operation-amount').value),
+            source: document.getElementById('operation-source').value,
+            sector: document.getElementById('operation-sector').value,
+            subsector: document.getElementById('operation-subsector').value,
+        };
+
+        if (!newTransaction.source || newTransaction.source === 'add_new') {
+            // Adicionar um alerta visual aqui no futuro
+            console.error("Fonte de investimento inválida.");
+            return;
+        }
+        
+        project.transactions.push(newTransaction);
+        
+        updateTotalBalance();
+        renderInvestments();
+
+        operationForm.reset();
+        hideModal(operationModal);
+        openHistoryPage(activeProjectId);
+    });
+
+
+    // --- History Page Filter Listeners ---
+    document.querySelectorAll('.history-period-btn').forEach(button => {
+        button.addEventListener('click', () => {
+            document.querySelectorAll('.history-period-btn').forEach(btn => {
+                btn.classList.remove('bg-indigo-600');
+                btn.classList.add('bg-gray-700', 'hover:bg-gray-600');
+            });
+            button.classList.add('bg-indigo-600');
+            button.classList.remove('bg-gray-700', 'hover:bg-gray-600');
+            activeHistoryPeriod = button.dataset.period;
+            const project = projects.find(p => p.id == activeProjectId);
+            if(project) renderOperations(project);
+        });
+    });
+
+    const historySectorFilter = document.getElementById('history-sector-filter');
+    const historySubSectorFilter = document.getElementById('history-subsector-filter');
+
+    historySectorFilter.addEventListener('change', () => {
+        const selectedSector = historySectorFilter.value;
+        document.querySelectorAll('#history-subsector-filter optgroup').forEach(group => {
+            group.hidden = !(selectedSector === 'todos' || group.label === selectedSector);
+        });
+        historySubSectorFilter.value = 'todos'; // Reset subsector filter
+        const project = projects.find(p => p.id == activeProjectId);
+        if(project) renderOperations(project);
+    });
+
+    historySubSectorFilter.addEventListener('change', () => {
+        const project = projects.find(p => p.id == activeProjectId);
+        if(project) renderOperations(project);
+    });
+
+
+    // --- PROJECT CAROUSEL LOGIC ---
+    let isDragging = false, startPos = 0, currentTranslate = 0, prevTranslate = 0;
+    function updateCarouselPosition() {
+        const container = projectCarousel.parentElement;
+        if (!container) return;
+        const slideWidth = container.offsetWidth;
+        currentTranslate = currentProjectIndex * -slideWidth;
+        projectCarousel.style.transform = `translateX(${currentTranslate}px)`;
+        prevTranslate = currentTranslate;
+        updateDots();
+    }
+    function updateDots() {
+        document.querySelectorAll('#carousel-dots > div').forEach((dot, index) => {
+            dot.classList.toggle('bg-indigo-500', index === currentProjectIndex);
+            dot.classList.toggle('bg-gray-600', index !== currentProjectIndex);
+        });
+    }
+    projectCarousel.addEventListener('touchstart', (e) => {
+        if(projects.length <= 1) return;
+        isDragging = true;
+        startPos = e.touches[0].clientX;
+        projectCarousel.style.transition = 'none';
+    });
+    projectCarousel.addEventListener('touchmove', (e) => {
+        if (!isDragging) return;
+        const currentPosition = e.touches[0].clientX;
+        currentTranslate = prevTranslate + currentPosition - startPos;
+        projectCarousel.style.transform = `translateX(${currentTranslate}px)`;
+    });
+    projectCarousel.addEventListener('touchend', (e) => {
+        if (!isDragging) return;
+        isDragging = false;
+        const movedBy = currentTranslate - prevTranslate;
+
+        if (movedBy < -50 && currentProjectIndex < projects.length - 1) currentProjectIndex++;
+        if (movedBy > 50 && currentProjectIndex > 0) currentProjectIndex--;
+        
+        projectCarousel.style.transition = 'transform 0.4s ease-in-out';
+        updateCarouselPosition();
+    });
+
+    // --- SECTOR CAROUSEL LOGIC ---
+    let isSectorDragging = false, startSectorPos = 0, currentSectorTranslate = 0, prevSectorTranslate = 0;
+    function initializeSectorCarousel() {
+        sectorsCarouselDots.innerHTML = '';
+        const sectorCount = sectorsCarousel.children.length;
+        for (let i = 0; i < sectorCount; i++) {
+            const dot = document.createElement('div');
+            dot.className = `w-2 h-2 rounded-full transition-colors ${i === 0 ? 'bg-indigo-500' : 'bg-gray-600'}`;
+            sectorsCarouselDots.appendChild(dot);
+        }
+        currentSectorIndex = 0;
+        updateSectorCarouselPosition();
+    }
+    function updateSectorCarouselPosition() {
+        const container = sectorsCarousel.parentElement;
+        if (!container) return;
+        const slideWidth = container.offsetWidth;
+        currentSectorTranslate = currentSectorIndex * -slideWidth;
+        sectorsCarousel.style.transform = `translateX(${currentSectorTranslate}px)`;
+        prevSectorTranslate = currentSectorTranslate;
+        updateSectorDots();
+    }
+    function updateSectorDots() {
+        document.querySelectorAll('#sectors-carousel-dots > div').forEach((dot, index) => {
+            dot.classList.toggle('bg-indigo-500', index === currentSectorIndex);
+            dot.classList.toggle('bg-gray-600', index !== currentSectorIndex);
+        });
+    }
+    sectorsCarousel.addEventListener('touchstart', (e) => {
+        isSectorDragging = true;
+        startSectorPos = e.touches[0].clientX;
+        sectorsCarousel.style.transition = 'none';
+    });
+    sectorsCarousel.addEventListener('touchmove', (e) => {
+        if (!isSectorDragging) return;
+        const currentPosition = e.touches[0].clientX;
+        currentSectorTranslate = prevSectorTranslate + currentPosition - startSectorPos;
+        sectorsCarousel.style.transform = `translateX(${currentSectorTranslate}px)`;
+    });
+    sectorsCarousel.addEventListener('touchend', (e) => {
+        if (!isSectorDragging) return;
+        isSectorDragging = false;
+        const movedBy = currentSectorTranslate - prevSectorTranslate;
+
+        if (movedBy < -50 && currentSectorIndex < sectorsCarousel.children.length - 1) currentSectorIndex++;
+        if (movedBy > 50 && currentSectorIndex > 0) currentSectorIndex--;
+
+        sectorsCarousel.style.transition = 'transform 0.4s ease-in-out';
+        updateSectorCarouselPosition();
+    });
+
+    window.addEventListener('resize', () => {
+        setTimeout(() => {
+            updateCarouselPosition();
+            updateSectorCarouselPosition();
+        }, 100);
+    });
+
+    // --- CHART LOGIC ---
+    let efficiencyChart = null; // for the main project comparison chart
+    let subSectorCharts = []; // for the individual sub-sector charts
+
+    function getPeriodConfig(filter) {
+        const now = new Date();
+        const labels = [];
+        let startDate;
+
+        switch (filter) {
+            case 'semana':
+                startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 6);
+                startDate.setHours(0, 0, 0, 0);
+                for (let i = 0; i < 7; i++) {
+                    const d = new Date(startDate);
+                    d.setDate(d.getDate() + i);
+                    labels.push(d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }));
+                }
+                break;
+            case 'mes':
+                startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+                const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+                for (let i = 1; i <= daysInMonth; i++) {
+                    labels.push(i.toString());
+                }
+                break;
+            case 'pizza': // Pizza chart uses full range, but we need a start date for filtering
+            case 'anual':
+            default:
+                startDate = new Date(now.getFullYear(), now.getMonth() - 11, 1);
+                for (let i = 11; i >= 0; i--) {
+                    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+                    labels.push(d.toLocaleString('pt-BR', { month: 'short' }).replace('.', '') + '/' + d.getFullYear().toString().slice(-2));
+                }
+                break;
+        }
+        return { labels, startDate };
+    }
+
+    function destroyCharts() {
+        if (efficiencyChart) {
+            efficiencyChart.destroy();
+            efficiencyChart = null;
+        }
+        subSectorCharts.forEach(chart => chart.destroy());
+        subSectorCharts = [];
+    }
+
+    function renderActiveChart() {
+        destroyCharts(); // Clear previous charts before rendering new ones
+        if (chartContext === 'subsectors') {
+            projectChartContainer.classList.add('hidden');
+            subsectorChartsContainer.classList.remove('hidden');
+            renderSubSectorCharts(activeProjectId);
+        } else {
+            subsectorChartsContainer.classList.add('hidden');
+            projectChartContainer.classList.remove('hidden');
+            renderProjectsChart();
+        }
+    }
+
+    function renderSubSectorCharts(projectId) {
+        const project = projects.find(p => p.id == projectId);
+        if (!project) return;
+        
+        subsectorChartsContainer.innerHTML = ''; 
+        const periodConfig = getPeriodConfig(activeFilter);
+        
+        const subSectors = [
+            "Planejamento", "Captação", "Recursos",
+            "Treinamento", "Armazenamento", "Produção",
+            "Marketing", "Relacionamento", "Resultados"
+        ];
+
+        if (activeFilter === 'pizza') {
+            subsectorChartsContainer.className = 'grid grid-cols-1 md:grid-cols-2 gap-4';
+            
+            const relevantTransactions = project.transactions.filter(t => new Date(t.date) >= periodConfig.startDate);
+
+            const costData = { labels: [], data: [] };
+            const revenueData = { labels: [], data: [] };
+
+            subSectors.forEach(sub => {
+                const cost = relevantTransactions.filter(t => t.subsector === sub && t.type === 'cost').reduce((sum, t) => sum + t.amount, 0);
+                if (cost > 0) {
+                    costData.labels.push(sub);
+                    costData.data.push(cost);
+                }
+                const revenue = relevantTransactions.filter(t => t.subsector === sub && t.type === 'revenue').reduce((sum, t) => sum + t.amount, 0);
+                if (revenue > 0) {
+                    revenueData.labels.push(sub);
+                    revenueData.data.push(revenue);
+                }
+            });
+
+            const pieColors = ['#818cf8', '#60a5fa', '#34d399', '#a78bfa', '#f87171', '#fb923c', '#facc15', '#4ade80', '#2dd4bf'];
+
+            if (revenueData.data.length > 0) {
+                const revenueChartWrapper = document.createElement('div');
+                revenueChartWrapper.className = 'bg-gray-800 p-4 rounded-xl';
+                revenueChartWrapper.innerHTML = `<h3 class="text-lg font-semibold text-center mb-2">Receitas</h3><canvas id="revenue-pie-chart"></canvas>`;
+                subsectorChartsContainer.appendChild(revenueChartWrapper);
+                new Chart(document.getElementById('revenue-pie-chart'), {
+                    type: 'pie',
+                    data: { labels: revenueData.labels, datasets: [{ data: revenueData.data, backgroundColor: pieColors }] },
+                    options: { responsive: true, plugins: { legend: { position: 'bottom', labels: { color: '#d1d5db' } } } }
+                });
+            }
+            if (costData.data.length > 0) {
+                const costChartWrapper = document.createElement('div');
+                costChartWrapper.className = 'bg-gray-800 p-4 rounded-xl';
+                costChartWrapper.innerHTML = `<h3 class="text-lg font-semibold text-center mb-2">Custos</h3><canvas id="cost-pie-chart"></canvas>`;
+                subsectorChartsContainer.appendChild(costChartWrapper);
+                new Chart(document.getElementById('cost-pie-chart'), {
+                    type: 'pie',
+                    data: { labels: costData.labels, datasets: [{ data: costData.data, backgroundColor: pieColors }] },
+                    options: { responsive: true, plugins: { legend: { position: 'bottom', labels: { color: '#d1d5db' } } } }
+                });
+            }
+            if (revenueData.data.length === 0 && costData.data.length === 0) {
+                 subsectorChartsContainer.innerHTML = `<p class="text-center text-gray-500 pt-16 col-span-full">Nenhuma operação para exibir nos gráficos.</p>`;
             }
 
-            const pieLabels = positiveData.map(d => d.label);
-            const pieData = positiveData.map(d => d.value);
-            const backgroundColors = pieLabels.map(() => `rgba(${Math.floor(Math.random()*255)}, ${Math.floor(Math.random()*255)}, ${Math.floor(Math.random()*255)}, 0.7)`);
+        } else {
+            subsectorChartsContainer.className = 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4';
+            const chartLabels = periodConfig.labels;
+            const now = new Date();
             
-             chartInstances[chartKey] = new Chart(ctx, {
+            subSectors.forEach((subSector, index) => {
+                const chartId = `subsector-chart-${index}`;
+                const chartWrapper = document.createElement('div');
+                chartWrapper.className = 'bg-gray-800 p-2 rounded-xl flex flex-col';
+                chartWrapper.innerHTML = `
+                    <h3 class="text-xs sm:text-sm font-semibold text-center text-gray-300 truncate">${subSector}</h3>
+                    <div class="flex-grow h-40">
+                        <canvas id="${chartId}"></canvas>
+                    </div>
+                `;
+                subsectorChartsContainer.appendChild(chartWrapper);
+                
+                const ctx = document.getElementById(chartId).getContext('2d');
+                const relevantTransactions = project.transactions.filter(t => {
+                    const transactionDate = new Date(t.date);
+                    transactionDate.setMinutes(transactionDate.getMinutes() + transactionDate.getTimezoneOffset());
+                    return t.subsector === subSector && transactionDate >= periodConfig.startDate;
+                });
+                
+                const chartData = Array(chartLabels.length).fill(0);
+                
+                relevantTransactions.forEach(t => {
+                    const transactionDate = new Date(t.date);
+                    transactionDate.setMinutes(transactionDate.getMinutes() + transactionDate.getTimezoneOffset());
+                    const value = t.type === 'revenue' ? t.amount : -t.amount;
+                    
+                    let idx = -1;
+                    switch (activeFilter) {
+                        case 'semana':
+                            idx = Math.floor((transactionDate - periodConfig.startDate) / (1000 * 60 * 60 * 24));
+                            break;
+                        case 'mes':
+                            if (transactionDate.getFullYear() === now.getFullYear() && transactionDate.getMonth() === now.getMonth()) idx = transactionDate.getDate() - 1;
+                            break;
+                        case 'anual':
+                        default:
+                            idx = (transactionDate.getFullYear() - periodConfig.startDate.getFullYear()) * 12 + (transactionDate.getMonth() - periodConfig.startDate.getMonth());
+                            break;
+                    }
+                    if (idx >= 0 && idx < chartData.length) chartData[idx] += value;
+                });
+
+                const newChart = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: chartLabels,
+                        datasets: [{ label: 'Resultado', data: chartData, borderColor: 'rgb(99, 102, 241)', tension: 0.2, pointRadius: 1, pointBackgroundColor: 'rgb(99, 102, 241)' }]
+                    },
+                    options: {
+                        responsive: true, maintainAspectRatio: false,
+                        scales: {
+                            y: { ticks: { display: true, color: '#9CA3AF', font: { size: 10 }, callback: (v) => (v/1000)+'k' }, grid: { color: 'rgba(255, 255, 255, 0.05)' } },
+                            x: { ticks: { display: true, color: '#9CA3AF', font: { size: 10 }, autoSkip: true, maxRotation: 45 }, grid: { display: false } }
+                        },
+                        plugins: { legend: { display: false }, tooltip: { callbacks: { label: (c) => `R$ ${c.raw.toFixed(2)}` } } }
+                    }
+                });
+                subSectorCharts.push(newChart);
+            });
+        }
+        document.querySelector('#results-page h1').textContent = `Resultados: ${project.name}`;
+    }
+
+    function renderProjectsChart() {
+        const ctx = document.getElementById('efficiency-chart').getContext('2d');
+        const periodConfig = getPeriodConfig(activeFilter);
+        
+        if (activeFilter === 'pizza') {
+            const projectResults = projects.map(p => {
+                const relevantTransactions = p.transactions.filter(t => new Date(t.date) >= periodConfig.startDate);
+                const revenue = relevantTransactions.filter(t => t.type === 'revenue').reduce((s, t) => s + t.amount, 0);
+                const cost = relevantTransactions.filter(t => t.type === 'cost').reduce((s, t) => s + t.amount, 0);
+                return { name: p.name, result: revenue - cost };
+            }).filter(p => p.result > 0); // Only positive results for a pie chart
+
+            efficiencyChart = new Chart(ctx, {
                 type: 'pie',
                 data: {
-                    labels: pieLabels,
+                    labels: projectResults.map(p => p.name),
                     datasets: [{
-                        label: 'Resultado Líquido',
-                        data: pieData,
-                        backgroundColor: backgroundColors,
-                        hoverOffset: 4
+                        data: projectResults.map(p => p.result),
+                        backgroundColor: ['#818cf8', '#60a5fa', '#34d399', '#a78bfa', '#f87171', '#fb923c', '#facc15', '#4ade80', '#2dd4bf']
                     }]
                 },
                 options: {
-                    plugins: {
-                        title: {
-                            display: true,
-                            text: 'Composição do Resultado Positivo'
-                        }
-                    }
+                    responsive: true, maintainAspectRatio: false,
+                    plugins: { legend: { position: 'bottom', labels: { color: '#d1d5db' } } }
+                }
+            });
+        } else {
+            const projectNames = projects.map(p => p.name);
+            const projectResults = projects.map(p => {
+                const relevantTransactions = p.transactions.filter(t => new Date(t.date) >= periodConfig.startDate);
+                const revenue = relevantTransactions.filter(t => t.type === 'revenue').reduce((s, t) => s + t.amount, 0);
+                const cost = relevantTransactions.filter(t => t.type === 'cost').reduce((s, t) => s + t.amount, 0);
+                return revenue - cost;
+            });
+
+            efficiencyChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: projectNames,
+                    datasets: [{
+                        label: 'Resultado (R$)',
+                        data: projectResults,
+                        backgroundColor: projectResults.map(r => r >= 0 ? 'rgba(74, 222, 128, 0.6)' : 'rgba(248, 113, 113, 0.6)'),
+                        borderColor: projectResults.map(r => r >= 0 ? 'rgb(74, 222, 128)' : 'rgb(248, 113, 113)'),
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    scales: {
+                        y: { beginAtZero: true, ticks: { color: '#9CA3AF' }, grid: { color: 'rgba(255, 255, 255, 0.1)' } },
+                        x: { ticks: { color: '#9CA3AF' }, grid: { display: false } }
+                    },
+                    plugins: { legend: { display: false } }
                 }
             });
         }
-    };
-    
-    const updateGlobalChart = (period = 'month') => {
-        const { start, end } = getDateRange(period);
-        const grid = document.getElementById('global-charts-grid');
-        grid.innerHTML = '';
+        document.querySelector('#results-page h1').textContent = 'Dashboard de Resultados';
+    }
 
-        if(globalChartType === 'pie'){
-            const data = [];
-            (appData.projects || []).forEach(project => {
-                 const filtered = (project.transactions || []).filter(t => new Date(t.date) >= start && new Date(t.date) <= end);
-                 const revenue = filtered.reduce((sum, t) => sum + (t.revenues || []).reduce((s, r) => s + r.amount, 0), 0);
-                 const investment = filtered.reduce((sum, t) => sum + (t.investments || []).reduce((s, i) => s + i.amount, 0), 0);
-                 const net = revenue - investment;
-                 if (net > 0) {
-                     data.push({label: project.name, value: net});
-                 }
-            });
-            const canvasId = 'global-chart-pie';
-            grid.className = 'grid grid-cols-1';
-            grid.innerHTML = `<div class="lg:col-span-1 mx-auto max-w-lg"><canvas id="${canvasId}"></canvas></div>`;
-            renderChart(canvasId, 'global', 'pie', null, data);
-            return;
-        }
-
-        grid.className = 'grid grid-cols-1 lg:grid-cols-2 gap-6';
-        (appData.projects || []).forEach(project => {
-            const card = document.createElement('div');
-            card.className = 'p-2 border rounded-lg bg-white';
-            const canvasId = `chart-project-${project.id}`;
-            card.innerHTML = `<h4 class="text-sm font-semibold text-center mb-2">${project.name}</h4><canvas id="${canvasId}"></canvas>`;
-            grid.appendChild(card);
-            
-            const filtered = (project.transactions || []).filter(t => new Date(t.date) >= start && new Date(t.date) <= end);
-            let labels = [];
-            let data = [];
-
-             if(period === 'week') {
-                 labels = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
-                 data = Array(7).fill(0);
-                 filtered.forEach(t => {
-                     const dayIndex = new Date(t.date).getDay();
-                     data[dayIndex] += (t.revenues || []).reduce((s, r) => s + r.amount, 0) - (t.investments || []).reduce((s, i) => s + i.amount, 0);
-                 });
-            } else if (period === 'month') {
-                 const daysInMonth = new Date(start.getFullYear(), start.getMonth() + 1, 0).getDate();
-                 labels = Array.from({length: daysInMonth}, (_, i) => i + 1);
-                 data = Array(daysInMonth).fill(0);
-                  filtered.forEach(t => {
-                     const dayIndex = new Date(t.date).getDate() - 1;
-                     data[dayIndex] += (t.revenues || []).reduce((s, r) => s + r.amount, 0) - (t.investments || []).reduce((s, i) => s + i.amount, 0);
-                 });
-            } else if (period === 'year') {
-                 labels = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
-                 data = Array(12).fill(0);
-                  filtered.forEach(t => {
-                     const monthIndex = new Date(t.date).getMonth();
-                     data[monthIndex] += (t.revenues || []).reduce((s, r) => s + r.amount, 0) - (t.investments || []).reduce((s, i) => s + i.amount, 0);
-                 });
-            }
-
-            renderChart(canvasId, canvasId, 'bar', labels, data);
+    // --- INITIALIZATION ---
+    function showInitialPage() {
+        // Garante que todas as paginas estao escondidas, exceto a home
+        [sectorsPage, historyPage, resultsPage].forEach(page => {
+            page.classList.add('hidden');
+            page.classList.remove('flex');
         });
-    };
+        homePage.classList.remove('hidden');
+        homePage.classList.add('flex');
 
-    const updateProjectChart = (period = 'month') => {
-        const project = getCurrentProject();
-        if (!project) return;
-        
-        const grid = document.getElementById('project-charts-grid');
-        grid.innerHTML = '';
-        
-        const { start, end } = getDateRange(period);
-        const allSubcategories = [...subcategories.Comercial, ...subcategories.Operacional, ...subcategories.Financeiro];
+        updateNav('home');
+        toggleNavBar(true);
+        renderProjects();
+        updateTotalBalance();
+        renderInvestments();
+    }
 
-        if(projectChartType === 'pie'){
-            const data = [];
-            allSubcategories.forEach(sub => {
-                const filtered = (project.transactions || []).filter(t => t.subcategory === sub && new Date(t.date) >= start && new Date(t.date) <= end);
-                const net = filtered.reduce((sum, t) => sum + ((t.revenues || []).reduce((s, r) => s + r.amount, 0) - (t.investments || []).reduce((s, i) => s + i.amount, 0)), 0);
-                if (net > 0) {
-                    data.push({label: sub, value: net});
-                }
-            });
-            const canvasId = 'project-chart-pie';
-            grid.className = 'grid grid-cols-1';
-            grid.innerHTML = `<div class="lg:col-span-1 mx-auto max-w-lg"><canvas id="${canvasId}"></canvas></div>`;
-            renderChart(canvasId, 'project', 'pie', null, data);
-            return;
-        }
-
-        grid.className = 'grid grid-cols-1 lg:grid-cols-3 gap-6';
-        allSubcategories.forEach((sub) => {
-            const card = document.createElement('div');
-            card.className = 'p-2 border rounded-lg bg-white';
-            const canvasId = `chart-${sub.replace(/\s/g, '-')}`;
-            card.innerHTML = `<h4 class="text-sm font-semibold text-center mb-2">${sub}</h4><canvas id="${canvasId}"></canvas>`;
-            grid.appendChild(card);
-            
-            const transactionsForSub = (project.transactions || []).filter(t => t.subcategory === sub && new Date(t.date) >= start && new Date(t.date) <= end);
-            let labels = [];
-            let data = [];
-            
-             if(period === 'week') {
-                 labels = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
-                 data = Array(7).fill(0);
-                 transactionsForSub.forEach(t => {
-                     const dayIndex = new Date(t.date).getDay();
-                     data[dayIndex] += (t.revenues || []).reduce((s, r) => s + r.amount, 0) - (t.investments || []).reduce((s, i) => s + i.amount, 0);
-                 });
-            } else if (period === 'month') {
-                 const daysInMonth = new Date(start.getFullYear(), start.getMonth() + 1, 0).getDate();
-                 labels = Array.from({length: daysInMonth}, (_, i) => i + 1);
-                 data = Array(daysInMonth).fill(0);
-                  transactionsForSub.forEach(t => {
-                     const dayIndex = new Date(t.date).getDate() - 1;
-                     data[dayIndex] += (t.revenues || []).reduce((s, r) => s + r.amount, 0) - (t.investments || []).reduce((s, i) => s + i.amount, 0);
-                 });
-            } else if (period === 'year') {
-                 labels = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
-                 data = Array(12).fill(0);
-                  transactionsForSub.forEach(t => {
-                     const monthIndex = new Date(t.date).getMonth();
-                     data[monthIndex] += (t.revenues || []).reduce((s, r) => s + r.amount, 0) - (t.investments || []).reduce((s, i) => s + i.amount, 0);
-                 });
-            }
-            
-            renderChart(canvasId, canvasId, 'bar', labels, data);
-        });
-    };
-
-    const renderGlobalTotalBalance = () => {
-        const total = (appData.sources || []).reduce((sum, source) => sum + source.balance, 0);
-        document.getElementById('total-balance').textContent = formatCurrency(total);
-        document.getElementById('total-balance-projects').textContent = formatCurrency(total);
-    };
-    
-    const renderGlobalSources = () => {
-        const container = document.getElementById('global-sources-list');
-        container.innerHTML = '';
-        if (!appData.sources || appData.sources.length === 0) {
-            container.innerHTML = `<p class="text-center text-slate-500">Nenhuma fonte de capital adicionada. Clique no botão vermelho abaixo para começar.</p>`;
-            return;
-        }
-        appData.sources.forEach(source => {
-            const el = document.createElement('div');
-            el.className = 'flex justify-between items-center p-3 bg-slate-50 rounded-lg border';
-            el.innerHTML = `
-                <div>
-                    <span class="font-semibold">${source.name} <span class="text-xs text-slate-500">(${source.type})</span></span>
-                    <p class="font-medium text-lg">${formatCurrency(source.balance)}</p>
-                </div>
-            `;
-            container.appendChild(el);
-        });
-    };
-
-    const renderProjects = () => {
-        const track = document.getElementById('projects-carousel-track');
-        track.innerHTML = '';
-        if (appData.projects.length === 0) {
-             track.innerHTML = `<div class="w-full flex-shrink-0 px-2"><div class="card text-center"><p class="text-slate-500">Nenhum projeto criado. Clique em "Novo Projeto" para começar.</p></div></div>`;
-             projectsCarousel.update(1);
-             return;
-        }
-        appData.projects.forEach(project => {
-            const slide = document.createElement('div');
-            slide.className = 'w-full md:w-1/2 lg:w-1/3 flex-shrink-0 px-2';
-            const totalRevenue = (project.transactions || []).reduce((sum, t) => sum + (t.revenues || []).reduce((s, r) => s + r.amount, 0), 0);
-            const totalInvestment = (project.transactions || []).reduce((sum, t) => sum + (t.investments || []).reduce((s, i) => s + i.amount, 0), 0);
-            const projectResult = totalRevenue - totalInvestment;
-
-            slide.innerHTML = `<div class="card h-full cursor-pointer hover:bg-slate-50 transition-colors"><h3 class="text-2xl font-bold text-slate-800">${project.name}</h3><p class="text-slate-600 mt-2">Resultado do Projeto</p><p class="text-3xl font-bold ${projectResult >= 0 ? 'text-green-600' : 'text-red-600'}">${formatCurrency(projectResult)}</p></div>`;
-            slide.addEventListener('click', () => switchView('main', {projectId: project.id}));
-            track.appendChild(slide);
-        });
-        projectsCarousel.update(appData.projects.length);
-    };
-    
-    const renderFilteredOperations = () => {
-        const project = getCurrentProject();
-        if (!project || !project.transactions) return;
-
-        const container = document.getElementById('history-operations-list');
-        const dateFilter = document.getElementById('history-filter-date').value;
-        const areaFilter = document.getElementById('history-filter-area').value;
-        const subFilter = document.getElementById('history-filter-subcategory').value;
-
-        let filtered = [...(project.transactions || [])];
-
-        if(dateFilter) {
-            const filterDate = new Date(dateFilter);
-            filterDate.setMinutes(filterDate.getMinutes() + filterDate.getTimezoneOffset());
-            filtered = filtered.filter(t => new Date(t.date).toDateString() === filterDate.toDateString());
-        }
-        if(areaFilter) {
-            filtered = filtered.filter(t => t.area === areaFilter);
-        }
-        if(subFilter) {
-            filtered = filtered.filter(t => t.subcategory === subFilter);
-        }
-
-        container.innerHTML = '';
-        if (filtered.length === 0) {
-            container.innerHTML = '<p class="text-slate-500">Nenhuma operação encontrada para os filtros selecionados.</p>';
-            return;
-        }
-        [...filtered].reverse().forEach(t => {
-            const totalRevenue = (t.revenues || []).reduce((s, r) => s + r.amount, 0);
-            const totalInvestment = (t.investments || []).reduce((s, i) => s + i.amount, 0);
-            const net = totalRevenue - totalInvestment;
-            const el = document.createElement('div');
-            el.className = 'border-b pb-2';
-            el.innerHTML = `
-                <div class="flex justify-between items-start">
-                   <p class="font-semibold">${t.description}</p>
-                   <p class="font-bold text-sm ${net >= 0 ? 'text-green-600' : 'text-red-600'}">${formatCurrency(net)}</p>
-                </div>
-                <p class="text-xs text-slate-500">${new Date(t.date).toLocaleDateString('pt-BR')} &bull; ${t.subcategory}</p>
-            `;
-            container.appendChild(el);
-        });
-    };
-
-    const renderSectorPanels = () => {
-        const project = getCurrentProject();
-        const transactions = project ? project.transactions || [] : [];
-        
-        ['Comercial', 'Operacional', 'Financeiro'].forEach(sector => {
-            const sectorData = transactions.filter(t => t.area === sector);
-            const sectorLower = sector.toLowerCase();
-
-            let totalRevenue = 0;
-            let totalInvestment = 0;
-            const subcategoryTotals = {};
-            
-            subcategories[sector].forEach(sub => subcategoryTotals[sub] = {revenue: 0, investment: 0});
-
-            sectorData.forEach(t => {
-                const rev = (t.revenues || []).reduce((s, i) => s + i.amount, 0);
-                const inv = (t.investments || []).reduce((s, i) => s + i.amount, 0);
-                totalRevenue += rev;
-                totalInvestment += inv;
-                if(subcategoryTotals[t.subcategory]) {
-                   subcategoryTotals[t.subcategory].revenue += rev;
-                   subcategoryTotals[t.subcategory].investment += inv;
-                }
-            });
-
-            document.getElementById(`${sectorLower}-revenue`).textContent = formatCurrency(totalRevenue);
-            document.getElementById(`${sectorLower}-investment`).textContent = formatCurrency(totalInvestment);
-            document.getElementById(`${sectorLower}-net`).textContent = formatCurrency(totalRevenue - totalInvestment);
-
-            const subContainer = document.getElementById(`${sectorLower}-subcategories`);
-            subContainer.innerHTML = '';
-             Object.entries(subcategoryTotals).forEach(([name, data]) => {
-                 const net = data.revenue - data.investment;
-                 const el = document.createElement('div');
-                 el.innerHTML = `<p class="flex justify-between text-sm"><span>${name}</span> <span class="font-semibold ${net >= 0 ? 'text-slate-700' : 'text-red-600'}">${formatCurrency(net)}</span></p>`;
-                 subContainer.appendChild(el);
-             });
-        });
-    };
-    
-    const renderProjectData = () => {
-        const project = getCurrentProject();
-        if (!project) return;
-        
-        document.getElementById('project-title-main').textContent = project.name;
-        const totalRevenue = (project.transactions || []).reduce((sum, t) => sum + (t.revenues || []).reduce((s, r) => s + r.amount, 0), 0);
-        const totalInvestment = (project.transactions || []).reduce((sum, t) => sum + (t.investments || []).reduce((s, i) => s + i.amount, 0), 0);
-        const projectResult = totalRevenue - totalInvestment;
-        document.getElementById('project-balance').textContent = formatCurrency(projectResult);
-        
-        renderSectorPanels();
-        sectorsCarousel.update(3);
-    };
-    
-    const renderHistoryView = () => {
-        document.getElementById('history-title').textContent = `Histórico do Projeto`;
-        
-        const filterArea = document.getElementById('history-filter-area');
-        filterArea.innerHTML = '<option value="">Todas as Áreas</option>';
-        Object.keys(subcategories).forEach(s => filterArea.innerHTML += `<option value="${s}">${s}</option>`);
-
-        const filterSub = document.getElementById('history-filter-subcategory');
-        filterSub.innerHTML = '<option value="">Todas Subcategorias</option>';
-        Object.values(subcategories).flat().forEach(s => filterSub.innerHTML += `<option value="${s}">${s}</option>`);
-        
-        renderFilteredOperations();
-    };
-    
-    const populateSubcategories = (areaSelect, subcategorySelect) => {
-         const selectedArea = areaSelect.value;
-         subcategorySelect.innerHTML = '';
-         subcategorySelect.disabled = true;
-         if (selectedArea && subcategories[selectedArea]) {
-             subcategories[selectedArea].forEach(sub => {
-                 const option = document.createElement('option');
-                 option.value = sub;
-                 option.textContent = sub;
-                 subcategorySelect.appendChild(option);
-             });
-             subcategorySelect.disabled = false;
-         } else {
-             subcategorySelect.innerHTML = '<option>Selecione a área</option>';
-         }
-     };
-    
-    const setupDynamicFields = (containerId, buttonId) => {
-         const container = addTransactionForm.querySelector(`#${containerId}`);
-         const button = addTransactionForm.querySelector(`#${buttonId}`);
-        
-         const addField = () => {
-             const fieldDiv = document.createElement('div');
-             fieldDiv.className = 'flex items-center gap-2';
-             fieldDiv.innerHTML = `
-                 <input type="text" placeholder="Descrição" class="block w-full rounded-md border-slate-300 shadow-sm text-sm p-1">
-                 <input type="number" step="0.01" placeholder="Valor" class="block w-40 rounded-md border-slate-300 shadow-sm text-sm p-1">
-                 <button type="button" class="remove-field-btn text-red-500 hover:text-red-700">&times;</button>
-             `;
-             fieldDiv.querySelector('.remove-field-btn').addEventListener('click', () => fieldDiv.remove());
-             container.appendChild(fieldDiv);
-         };
-        
-         button.addEventListener('click', addField);
-         addField(); 
-     };
-    
-    const getFieldsData = (containerId) => {
-         const container = addTransactionForm.querySelector(`#${containerId}`);
-         return Array.from(container.children).map(div => {
-             const inputs = div.querySelectorAll('input');
-             return {
-                 description: inputs[0].value,
-                 amount: parseFloat(inputs[1].value) || 0
-             };
-         }).filter(item => item.description && item.amount > 0);
-     };
-     
-    const renderAddTransactionForm = () => {
-         addTransactionForm.innerHTML = `
-            <div><label for="transaction-description" class="block text-sm font-medium text-slate-700">Descrição Geral da Operação</label><input type="text" id="transaction-description" placeholder="Ex: Campanha de Marketing Digital" required class="mt-1 block w-full rounded-md border-slate-300 shadow-sm"></div>
-            <div><label class="block text-sm font-medium text-slate-700">Receitas</label><div id="revenue-fields-container" class="space-y-2 mt-1 bg-slate-50 p-3 rounded-md"></div><button type="button" id="add-revenue-btn" class="mt-2 text-sm text-indigo-600 hover:text-indigo-800 font-semibold">+ Adicionar Receita</button></div>
-            <div><label class="block text-sm font-medium text-slate-700">Investimentos / Custos</label><div id="investment-fields-container" class="space-y-2 mt-1 bg-slate-50 p-3 rounded-md"></div><button type="button" id="add-investment-btn" class="mt-2 text-sm text-indigo-600 hover:text-indigo-800 font-semibold">+ Adicionar Custo</button></div>
-            <div class="grid grid-cols-2 gap-4">
-                <div><label for="transaction-area" class="block text-sm font-medium text-slate-700">Área</label><select id="transaction-area" required class="mt-1 block w-full rounded-md border-slate-300 shadow-sm"><option value="" disabled selected>Selecione</option><option value="Comercial">Comercial</option><option value="Operacional">Operacional</option><option value="Financeiro">Financeiro</option></select></div>
-                <div><label for="transaction-subcategory" class="block text-sm font-medium text-slate-700">Subcategoria</label><select id="transaction-subcategory" required class="mt-1 block w-full rounded-md border-slate-300 shadow-sm disabled:bg-slate-100" disabled><option>Selecione a área</option></select></div>
-            </div>
-            <div><label for="transaction-source-account" class="block text-sm font-medium text-slate-700">Fonte do Capital (Origem/Destino)</label><select id="transaction-source-account" required class="mt-1 block w-full rounded-md border-slate-300 shadow-sm"></select></div>
-            <div class="mt-6 flex justify-end gap-4"><button type="button" class="cancel-modal-btn bg-slate-200 text-slate-800 font-bold py-2 px-4 rounded-md">Cancelar</button><button type="submit" class="bg-green-600 text-white font-bold py-2 px-4 rounded-md">Registrar</button></div>`;
-
-        const areaSelect = addTransactionForm.querySelector('#transaction-area');
-        const subcategorySelect = addTransactionForm.querySelector('#transaction-subcategory');
-        areaSelect.addEventListener('change', () => populateSubcategories(areaSelect, subcategorySelect));
-
-        setupDynamicFields('revenue-fields-container', 'add-revenue-btn');
-        setupDynamicFields('investment-fields-container', 'add-investment-btn');
-        
-        const sourceSelect = addTransactionForm.querySelector('#transaction-source-account');
-        sourceSelect.innerHTML = (appData.sources || []).map(s => `<option value="${s.id}">${s.name} (${formatCurrency(s.balance)})</option>`).join('');
-
-        addTransactionForm.querySelector('.cancel-modal-btn').addEventListener('click', hideModals);
-    };
-
-    const renderUI = () => {
-        renderGlobalTotalBalance();
-        if (currentView === 'projects') {
-            renderProjects();
-            renderGlobalSources();
-        } else if (currentView === 'main' && currentProjectId) {
-            renderProjectData();
-        } else if (currentView === 'global-reports') {
-            updateGlobalChart(document.querySelector('#global-chart-filters .active')?.dataset.period);
-        } else if (currentView === 'reports' && currentProjectId) {
-            updateProjectChart(document.querySelector('#project-chart-filters .active')?.dataset.period);
-        } else if (currentView === 'history' && currentProjectId) {
-            renderHistoryView();
-        }
-    };
-    
-    // --- CORE LOGIC & NAVIGATION ---
-    const switchView = (viewName, options = {}) => {
-        currentProjectId = options.projectId !== undefined ? options.projectId : currentProjectId;
-        currentSector = options.sector !== undefined ? options.sector : null; // Reset sector when not explicitly passed
-
-        [projectsView, mainView, globalReportsView, reportsView, historyView].forEach(v => v.classList.add('hidden'));
-        
-        if (viewName === 'projects') {
-            projectsView.classList.remove('hidden');
-            currentProjectId = null;
-        } else if (viewName === 'main') mainView.classList.remove('hidden');
-        else if (viewName === 'reports') reportsView.classList.remove('hidden');
-        else if (viewName === 'global-reports') globalReportsView.classList.remove('hidden');
-        else if (viewName === 'history') historyView.classList.remove('hidden');
-        
-        currentView = viewName;
-        updateBottomNav();
-        renderUI();
-    };
-
-    const updateBottomNav = () => {
-        const nav = document.getElementById('bottom-nav');
-        nav.innerHTML = ''; // Clear previous buttons
-
-        let buttons = '';
-        if (currentView === 'projects' || currentView === 'global-reports') {
-            buttons = `
-                <button id="nav-add-source-btn" class="flex flex-col items-center text-red-600 p-2 rounded-lg"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" viewBox="0 0 16 16"><path d="M4 10.781c.524 1.637 1.976 2.77 3.553 2.872.223.014.448.028.675.045v-1.15c-.212-.016-.416-.03-.611-.045-1.29-.086-2.288-.934-2.614-2.06H1.5v1h2.5zm10 0v-1h-2.5c-.326 1.126-1.324-1.974-2.614 2.06-.195.015-.399.029-.611.045v1.15c.227-.017.452-.03.675-.045C10.024 13.55 11.477 12.417 12 10.781h2.5zM10.5 8a2.5 2.5 0 1 1-5 0 2.5 2.5 0 0 1 5 0m-2.5 1.5a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3M1.5 5.034h2.5c.334-1.232 1.453-2.148 2.842-2.235.215-.015.435-.028.662-.04v-1.15A12 12 0 0 0 8 1.516a12 12 0 0 0-.504.032v1.15c.227.012.447.025.662.04C9.547 2.886 10.666 3.802 11 5.034h2.5v-1H12c-.524-1.637-1.976-2.77-3.553-2.872a12 12 0 0 0-.894-.045v1.15c.212.016.416.03.611.045C9.676 2.37 10.674 3.218 11 4.348h2.5v-1H12c-.326-1.126-1.324-1.974-2.614-2.06A12 12 0 0 0 8 2.226v-1.15c-.227.017-.452-.03-.675-.045C5.976 1.23 4.523 2.363 4 4.034H1.5z"/></svg><span class="text-xs font-semibold">Fonte</span></button>
-                <button id="nav-add-project" class="flex flex-col items-center text-blue-600 p-2 rounded-lg"><svg class="h-8 w-8" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 16 16"><path d="M8 4a.5.5 0 0 1 .5.5v3h3a.5.5 0 0 1 0 1h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 1 0-1h3v-3A.5.5 0 0 1 8 4"/></svg><span class="text-xs font-semibold">Novo Projeto</span></button>
-                <button id="nav-global-results" class="flex flex-col items-center text-green-600 p-2 rounded-lg"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" viewBox="0 0 16 16"><path d="M11 2a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v12h.5a.5.5 0 0 1 0 1H.5a.5.5 0 0 1 0-1H1v-3a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v3h1V7a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v7h1z"/></svg><span class="text-xs font-semibold">Resultados</span></button>
-            `;
-        } else if (currentView === 'main' || currentView === 'reports' || currentView === 'history') {
-            buttons = `
-                <button id="open-add-source-modal-btn" class="flex flex-col items-center text-red-600 p-2 rounded-lg"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" viewBox="0 0 16 16"><path d="M4 10.781c.524 1.637 1.976 2.77 3.553 2.872.223.014.448.028.675.045v-1.15c-.212-.016-.416-.03-.611-.045-1.29-.086-2.288-.934-2.614-2.06H1.5v1h2.5zm10 0v-1h-2.5c-.326 1.126-1.324-1.974-2.614 2.06-.195.015-.399.029-.611.045v1.15c.227-.017.452-.03.675-.045C10.024 13.55 11.477 12.417 12 10.781h2.5zM10.5 8a2.5 2.5 0 1 1-5 0 2.5 2.5 0 0 1 5 0m-2.5 1.5a1.5 1.5 0 1 0 0-3 1.5 1.5 0 0 0 0 3M1.5 5.034h2.5c.334-1.232 1.453-2.148 2.842-2.235.215-.015.435-.028.662-.04v-1.15A12 12 0 0 0 8 1.516a12 12 0 0 0-.504.032v1.15c.227.012.447.025.662.04C9.547 2.886 10.666 3.802 11 5.034h2.5v-1H12c-.524-1.637-1.976-2.77-3.553-2.872a12 12 0 0 0-.894-.045v1.15c.212.016.416.03.611.045C9.676 2.37 10.674 3.218 11 4.348h2.5v-1H12c-.326-1.126-1.324-1.974-2.614-2.06A12 12 0 0 0 8 2.226v-1.15c-.227.017-.452-.03-.675-.045C5.976 1.23 4.523 2.363 4 4.034H1.5z"/></svg><span class="text-xs font-semibold">Fonte</span></button>
-                <button id="nav-history-btn" class="flex flex-col items-center text-blue-600 p-2 rounded-lg"><svg class="h-8 w-8" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M5 11.5a.5.5 0 0 1 .5-.5h9a.5.5 0 0 1 0 1h-9a.5.5 0 0 1-.5-.5m-2-4A.5.5 0 0 1 3.5 7h9a.5.5 0 0 1 0 1h-9a.5.5 0 0 1-.5-.5m-2-4A.5.5 0 0 1 1.5 3h9a.5.5 0 0 1 0 1h-9a.5.5 0 0 1-.5-.5"/></svg><span class="text-xs font-semibold">Histórico</span></button>
-                <button id="nav-btn-results" class="flex flex-col items-center text-green-600 p-2 rounded-lg"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" viewBox="0 0 16 16"><path d="M11 2a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v12h.5a.5.5 0 0 1 0 1H.5a.5.5 0 0 1 0-1H1v-3a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v3h1V7a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v7h1z"/></svg><span class="text-xs font-semibold">Resultados</span></button>
-            `;
-        }
-        nav.innerHTML = buttons;
-        
-        // Re-attach listeners
-        if (currentView === 'projects' || currentView === 'global-reports') {
-            document.getElementById('nav-add-source-btn').addEventListener('click', () => showModal(addSourceModal));
-            document.getElementById('nav-add-project').addEventListener('click', () => showModal(addProjectModal));
-            document.getElementById('nav-global-results').addEventListener('click', () => switchView('global-reports'));
-        } else if (currentView === 'main' || currentView === 'reports' || currentView === 'history') {
-            document.getElementById('open-add-source-modal-btn').addEventListener('click', () => showModal(addSourceModal));
-            document.getElementById('nav-history-btn').addEventListener('click', () => switchView('history'));
-            document.getElementById('nav-btn-results').addEventListener('click', () => switchView('reports'));
-        }
-    };
-
-    // --- EVENT LISTENERS ---
-    addProjectForm.addEventListener('submit', (e) => {
-        e.preventDefault();
-        const projectNameInput = document.getElementById('project-name');
-        const projectName = projectNameInput.value.trim();
-        if (projectName) {
-            appData.projects.push({ id: Date.now(), name: projectName, transactions: [] });
-            saveToLocalStorage();
-            switchView('projects'); 
-            hideModals();
-            projectNameInput.value = '';
-        }
-    });
-
-    addSourceForm.addEventListener('submit', (e) => {
-        e.preventDefault();
-        const sourceName = document.getElementById('source-name').value;
-        const sourceType = document.getElementById('source-type').value;
-        const initialBalance = parseFloat(document.getElementById('initial-balance').value);
-
-        if(sourceName && sourceType && !isNaN(initialBalance)){
-            if (!appData.sources) appData.sources = [];
-            appData.sources.push({id: Date.now(), name: sourceName, type: sourceType, balance: initialBalance});
-            saveToLocalStorage();
-            renderUI();
-            hideModals();
-            addSourceForm.reset();
-        }
-    });
-
-    addTransactionForm.addEventListener('submit', e => {
-        e.preventDefault();
-        const project = getCurrentProject();
-        const sourceIdInput = addTransactionForm.querySelector('#transaction-source-account');
-        if (!sourceIdInput.value) {
-            alert("Por favor, adicione uma fonte de capital primeiro.");
-            return;
-        }
-        const sourceId = parseInt(sourceIdInput.value);
-        const source = appData.sources.find(s => s.id === sourceId);
-
-        if(!project || !source) {
-            alert('Projeto ou Fonte de Capital inválida.');
-            return;
-        }
-        
-        const revenues = getFieldsData('revenue-fields-container');
-        const investments = getFieldsData('investment-fields-container');
-        const totalRevenue = revenues.reduce((s, i) => s + i.amount, 0);
-        const totalInvestment = investments.reduce((s, i) => s + i.amount, 0);
-        
-        source.balance += totalRevenue - totalInvestment;
-
-        if(!project.transactions) project.transactions = [];
-        project.transactions.push({
-            id: Date.now(),
-            description: addTransactionForm.querySelector('#transaction-description').value,
-            revenues,
-            investments,
-            area: addTransactionForm.querySelector('#transaction-area').value,
-            subcategory: addTransactionForm.querySelector('#transaction-subcategory').value,
-            sourceAccountId: sourceId,
-            date: new Date().toISOString()
-        });
-
-        saveToLocalStorage();
-        renderUI();
-        hideModals();
-    });
-    
-    mainView.addEventListener('click', (e) => {
-        const card = e.target.closest('.card[data-sector]');
-        if (card) {
-            const sector = card.dataset.sector;
-            renderAddTransactionForm();
-            const areaSelect = addTransactionForm.querySelector('#transaction-area');
-            areaSelect.value = sector;
-            areaSelect.dispatchEvent(new Event('change'));
-            showModal(addTransactionModal);
-        }
-    });
-
-    document.getElementById('back-to-projects-btn').addEventListener('click', () => switchView('projects'));
-    document.getElementById('back-to-projects-from-global-btn').addEventListener('click', () => switchView('projects'));
-    document.getElementById('back-to-main-from-reports-btn')?.addEventListener('click', () => switchView('main'));
-    document.getElementById('back-to-main-from-history-btn').addEventListener('click', () => switchView('main'));
-    cancelModalBtns.forEach(btn => btn.addEventListener('click', hideModals));
-    document.getElementById('open-calculator-btn').addEventListener('click', () => showModal(calculatorModal));
-    document.getElementById('close-calculator-btn').addEventListener('click', () => hideModals());
-    document.getElementById('copy-calculator-btn').addEventListener('click', () => {
-        const display = document.getElementById('calculator-display');
-        const copyBtn = document.getElementById('copy-calculator-btn');
-        navigator.clipboard.writeText(display.textContent).then(() => {
-            copyBtn.textContent = 'Copiado!';
-            setTimeout(() => { copyBtn.textContent = 'Copiar'; }, 1500);
-        });
-    });
-
-
-    document.getElementById('history-filter-date').addEventListener('change', renderFilteredOperations);
-    document.getElementById('history-filter-area').addEventListener('change', renderFilteredOperations);
-    document.getElementById('history-filter-subcategory').addEventListener('change', renderFilteredOperations);
-    
-    document.getElementById('global-chart-filters').addEventListener('click', (e) => {
-        if(e.target.tagName === 'BUTTON') {
-            document.querySelectorAll('#global-chart-filters .filter-btn').forEach(b => b.classList.remove('active'));
-            e.target.classList.add('active');
-            updateGlobalChart(e.target.dataset.period);
-        }
-    });
-    document.getElementById('global-chart-type-filters').addEventListener('click', (e) => {
-        if(e.target.tagName === 'BUTTON') {
-            document.querySelectorAll('#global-chart-type-filters .filter-btn').forEach(b => b.classList.remove('active'));
-            e.target.classList.add('active');
-            globalChartType = e.target.dataset.type;
-            updateGlobalChart(document.querySelector('#global-chart-filters .active').dataset.period);
-        }
-    });
-    document.getElementById('project-chart-filters').addEventListener('click', (e) => {
-        if(e.target.tagName === 'BUTTON') {
-            document.querySelectorAll('#project-chart-filters .filter-btn').forEach(b => b.classList.remove('active'));
-            e.target.classList.add('active');
-            updateProjectChart(e.target.dataset.period);
-        }
-    });
-    document.getElementById('project-chart-type-filters').addEventListener('click', (e) => {
-        if(e.target.tagName === 'BUTTON') {
-            document.querySelectorAll('#project-chart-type-filters .filter-btn').forEach(b => b.classList.remove('active'));
-            e.target.classList.add('active');
-            projectChartType = e.target.dataset.type;
-            updateProjectChart(document.querySelector('#project-chart-filters .active').dataset.period);
-        }
-    });
-    
-    allModals.forEach(modal => {
-        modal.addEventListener('click', (e) => {
-            if (e.target === modal) {
-                hideModals();
-            }
-        });
-    });
-
-    // --- INITIAL LOAD ---
-    switchView('projects');
-}
-
-initializeManagerApp();
+    showInitialPage();
+});
