@@ -1,10 +1,11 @@
 // --- GERENCIAMENTO DE DADOS ---
 let sources = [];
 let projects = [];
-let chartInstance = null;
+let activeCharts = []; // Para rastrear e destruir gráficos antigos
 let currentProjectId = null;
 let transactionTypeSelectListener = null; 
 let historyFilters = { period: 'week', sector: 'all', subsector: 'all' };
+let dashboardPeriodFilter = 'week';
 const subsectorsBySector = {
     'all': ['Todos os Subsetores'],
     'Financeiro': ['Todos', 'Planejamento', 'Captação', 'Recursos'],
@@ -35,7 +36,7 @@ const loadData = () => {
     }
 };
 
-// --- FUNÇÕES DE RENDERIZAÇÃO ---
+// --- FUNÇÕES DE RENDERIZAÇÃO PRINCIPAIS ---
 const renderTotalBalance = () => {
     const total = sources.reduce((sum, source) => sum + parseFloat(source.balance), 0);
     document.getElementById('total-balance').textContent = formatCurrency(total);
@@ -81,101 +82,129 @@ const renderInvestmentSources = () => {
     });
 };
 
-const renderChart = (period = 'week') => {
-    const ctx = document.getElementById('resultsChart').getContext('2d');
-    const now = new Date();
-    let startDate;
+// --- FUNÇÕES DE GRÁFICOS ---
 
-    if (period === 'week') {
-        startDate = new Date(now.setDate(now.getDate() - now.getDay()));
-    } else { // month
-        startDate = new Date(now.getFullYear(), now.getMonth(), 1);
-    }
-    startDate.setHours(0, 0, 0, 0);
-
-    const labels = projects.map(p => p.name);
-    const data = projects.map(project => {
-        return project.transactions
-            .filter(t => new Date(t.date) >= startDate)
-            .reduce((balance, t) => balance + (t.type === 'revenue' ? t.amount : -t.amount), 0);
-    });
-    
-    const backgroundColors = data.map(value => value >= 0 ? 'rgba(75, 192, 192, 0.6)' : 'rgba(255, 99, 132, 0.6)');
-    const borderColors = data.map(value => value >= 0 ? 'rgba(75, 192, 192, 1)' : 'rgba(255, 99, 132, 1)');
-
-    if (chartInstance) chartInstance.destroy();
-
-    chartInstance = new Chart(ctx, {
-        type: 'bar',
-        data: {
-            labels: labels,
-            datasets: [{
-                label: 'Resultado (Receitas - Custos)',
-                data: data,
-                backgroundColor: backgroundColors,
-                borderColor: borderColors,
-                borderWidth: 1
-            }]
-        },
-        options: { scales: { y: { beginAtZero: true } }, responsive: true, plugins: { legend: { display: false } } }
-    });
+const destroyActiveCharts = () => {
+    activeCharts.forEach(chart => chart.destroy());
+    activeCharts = [];
 };
 
-const renderHistory = () => {
-    const list = document.getElementById('history-list');
-    list.innerHTML = '';
-    
-    let allTransactions = [];
-    projects.forEach(p => {
-        p.transactions.forEach(t => {
-            allTransactions.push({ ...t, projectName: p.name });
-        });
-    });
+function renderDashboardCharts(period = 'week') {
+    destroyActiveCharts();
+    const container = document.getElementById('charts-container');
+    container.innerHTML = '';
 
-    const now = new Date();
-    let startDate;
-    if (historyFilters.period === 'week') {
-        startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() - (now.getDay() === 0 ? 6 : now.getDay() - 1));
-    } else if (historyFilters.period === 'month') {
-        startDate = new Date(now.getFullYear(), now.getMonth(), 1);
-    } else { // year
-        startDate = new Date(now.getFullYear(), 0, 1);
-    }
-    startDate.setHours(0, 0, 0, 0);
+    // Render Pie Charts
+    const pieData = projects.reduce((acc, project) => {
+        const revenue = project.transactions.filter(t => t.type === 'revenue').reduce((sum, t) => sum + t.amount, 0);
+        const cost = project.transactions.filter(t => t.type === 'cost').reduce((sum, t) => sum + t.amount, 0);
+        if (revenue > 0) acc.revenues.data.push(revenue);
+        if (revenue > 0) acc.revenues.labels.push(project.name);
+        if (cost > 0) acc.costs.data.push(cost);
+        if (cost > 0) acc.costs.labels.push(project.name);
+        return acc;
+    }, { revenues: { labels: [], data: [] }, costs: { labels: [], data: [] } });
 
-    let filteredTransactions = allTransactions.filter(t => new Date(t.date) >= startDate);
-    
-    if (historyFilters.sector !== 'all') {
-        filteredTransactions = filteredTransactions.filter(t => t.sector === historyFilters.sector);
+    if (pieData.revenues.data.length > 0) {
+        container.innerHTML += `<div class="chart-card"><h2>Eficiência de Receita por Projeto</h2><canvas id="revenuePieChart"></canvas></div>`;
+        const revenueCtx = document.getElementById('revenuePieChart').getContext('2d');
+        activeCharts.push(new Chart(revenueCtx, { type: 'pie', data: { labels: pieData.revenues.labels, datasets: [{ data: pieData.revenues.data, backgroundColor: ['#4CAF50', '#8BC34A', '#CDDC39', '#FFEB3B'] }] } }));
     }
-    
-    if (historyFilters.subsector !== 'all') {
-        filteredTransactions = filteredTransactions.filter(t => t.subSector === historyFilters.subsector);
+     if (pieData.costs.data.length > 0) {
+        container.innerHTML += `<div class="chart-card"><h2>Eficiência de Custo por Projeto</h2><canvas id="costPieChart"></canvas></div>`;
+        const costCtx = document.getElementById('costPieChart').getContext('2d');
+        activeCharts.push(new Chart(costCtx, { type: 'pie', data: { labels: pieData.costs.labels, datasets: [{ data: pieData.costs.data, backgroundColor: ['#F44336', '#E91E63', '#9C27B0', '#673AB7'] }] } }));
     }
 
-    filteredTransactions.sort((a, b) => new Date(b.date) - new Date(a.date));
-
-    if (filteredTransactions.length === 0) {
-        list.innerHTML = `<p class="text-gray-500 text-center col-span-full">Nenhuma operação encontrada.</p>`;
-        return;
-    }
-
-    filteredTransactions.forEach(t => {
-        const item = document.createElement('div');
-        const isRevenue = t.type === 'revenue';
-        item.className = `history-item ${isRevenue ? 'history-item-revenue' : 'history-item-cost'}`;
+    // Render Bar Charts per Project
+    projects.forEach(project => {
+        const chartId = `projectChart_${project.id}`;
+        container.innerHTML += `<div class="chart-card"><h2>Desempenho: ${project.name}</h2><canvas id="${chartId}"></canvas></div>`;
+        const ctx = document.getElementById(chartId).getContext('2d');
         
-        item.innerHTML = `
-            <div class="flex-grow pr-4">
-                <p class="font-bold text-gray-800">${t.description}</p>
-                <p class="text-sm text-gray-500">${t.projectName} - ${new Date(t.date).toLocaleDateString('pt-BR')}</p>
-                <p class="text-xs text-gray-400">${t.sector} / ${t.subSector}</p>
-            </div>
-            <p class="font-bold text-lg whitespace-nowrap ${isRevenue ? 'text-green-600' : 'text-red-600'}">${isRevenue ? '+' : '-'} ${formatCurrency(t.amount)}</p>
-        `;
-        list.appendChild(item);
+        const data = aggregateDataForPeriod(project.transactions, period);
+
+        activeCharts.push(new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: data.labels,
+                datasets: [
+                    { label: 'Receita', data: data.revenues, backgroundColor: 'rgba(75, 192, 192, 0.6)' },
+                    { label: 'Custo', data: data.costs, backgroundColor: 'rgba(255, 99, 132, 0.6)' }
+                ]
+            },
+            options: { scales: { x: { stacked: true }, y: { stacked: true, beginAtZero: true } } }
+        }));
     });
-};
+}
+
+function renderSubsectorCharts() {
+    destroyActiveCharts();
+    const container = document.getElementById('subsector-charts-container');
+    container.innerHTML = '';
+    const project = projects.find(p => p.id === currentProjectId);
+    if (!project) return;
+
+    const dataBySubsector = project.transactions.reduce((acc, t) => {
+        if (!acc[t.subSector]) acc[t.subSector] = { revenue: 0, cost: 0 };
+        if (t.type === 'revenue') acc[t.subSector].revenue += t.amount;
+        else acc[t.subSector].cost += t.amount;
+        return acc;
+    }, {});
+    
+    for (const subsector in dataBySubsector) {
+        const chartId = `subsectorChart_${subsector.replace(/\s+/g, '')}`;
+        container.innerHTML += `<div class="chart-card"><h3>Desempenho: ${subsector}</h3><canvas id="${chartId}"></canvas></div>`;
+        const ctx = document.getElementById(chartId).getContext('2d');
+        activeCharts.push(new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: ['Receita', 'Custo'],
+                datasets: [{
+                    label: subsector,
+                    data: [dataBySubsector[subsector].revenue, dataBySubsector[subsector].cost],
+                    backgroundColor: ['rgba(75, 192, 192, 0.6)', 'rgba(255, 99, 132, 0.6)']
+                }]
+            },
+            options: { indexAxis: 'y', scales: { y: { beginAtZero: true } } }
+        }));
+    }
+}
+
+function aggregateDataForPeriod(transactions, period) {
+    // This is a simplified aggregation. A real app might use a library like date-fns.
+    const result = { labels: [], revenues: [], costs: [] };
+    if (period === 'week') {
+        result.labels = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+        result.revenues = Array(7).fill(0);
+        result.costs = Array(7).fill(0);
+        transactions.forEach(t => {
+            const day = new Date(t.date).getUTCDay();
+            if (t.type === 'revenue') result.revenues[day] += t.amount;
+            else result.costs[day] += t.amount;
+        });
+    } else if (period === 'month') {
+        const daysInMonth = new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).getDate();
+        result.labels = Array.from({ length: daysInMonth }, (_, i) => i + 1);
+        result.revenues = Array(daysInMonth).fill(0);
+        result.costs = Array(daysInMonth).fill(0);
+         transactions.forEach(t => {
+            const day = new Date(t.date).getUTCDate() - 1;
+            if (t.type === 'revenue') result.revenues[day] += t.amount;
+            else result.costs[day] += t.amount;
+        });
+    } else { // year
+        result.labels = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+        result.revenues = Array(12).fill(0);
+        result.costs = Array(12).fill(0);
+         transactions.forEach(t => {
+            const month = new Date(t.date).getUTCMonth();
+            if (t.type === 'revenue') result.revenues[month] += t.amount;
+            else result.costs[month] += t.amount;
+        });
+    }
+    return result;
+}
 
 
 // --- CONTROLE DA UI ---
@@ -187,7 +216,6 @@ const openTransactionModal = (sector, subSector) => {
     if (!project) return;
     
     document.getElementById('transaction-form').reset();
-
     document.getElementById('transaction-project-name').textContent = `${project.name} / ${sector} / ${subSector}`;
     document.getElementById('transaction-sector').value = sector;
     document.getElementById('transaction-subsector').value = subSector;
@@ -205,13 +233,11 @@ const openTransactionModal = (sector, subSector) => {
     if (sector === 'Financeiro' && subSector === 'Captação') {
         captacaoFields.classList.remove('hidden');
         descriptionInput.placeholder = "Ex: Investidor Anjo, Empréstimo BMG";
-
         transactionTypeSelectListener = () => {
             transactionSourceWrapper.classList.toggle('hidden', transactionTypeSelect.value === 'revenue');
         };
         transactionTypeSelect.addEventListener('change', transactionTypeSelectListener);
         transactionTypeSelectListener();
-
     } else {
         captacaoFields.classList.add('hidden');
         descriptionInput.placeholder = "Ex: Venda de licença";
@@ -220,7 +246,6 @@ const openTransactionModal = (sector, subSector) => {
     
     const sourceSelect = document.getElementById('transaction-source');
     sourceSelect.innerHTML = '';
-    
     if (sources.length === 0) {
         sourceSelect.innerHTML = '<option value="" disabled selected>Nenhuma fonte criada</option>';
     } else {
@@ -231,7 +256,6 @@ const openTransactionModal = (sector, subSector) => {
             sourceSelect.appendChild(option);
         });
     }
-
     openModal('transaction-modal');
 };
 
@@ -244,7 +268,6 @@ const switchView = (viewId, projectId = null) => {
     const createProjectBtn = document.getElementById('create-project-btn');
     const historyBtn = document.getElementById('history-btn');
 
-    // Lógica para trocar os botões de navegação
     if (viewId === 'sectors-view') {
         createProjectBtn.classList.add('hidden');
         historyBtn.classList.remove('hidden');
@@ -253,8 +276,8 @@ const switchView = (viewId, projectId = null) => {
         historyBtn.classList.add('hidden');
     }
 
-    // Lógica específica de cada view
-    if (viewId === 'dashboard-view') renderChart();
+    destroyActiveCharts(); // Clear charts when switching views
+    if (viewId === 'dashboard-view') renderDashboardCharts(dashboardPeriodFilter);
     if (viewId === 'history-view') {
         populateFilters();
         renderHistory();
@@ -262,17 +285,20 @@ const switchView = (viewId, projectId = null) => {
     if (viewId === 'sectors-view') {
          const project = projects.find(p => p.id === currentProjectId);
          if(project) document.getElementById('sectors-project-name').textContent = project.name;
+         renderSubsectorCharts();
     }
 };
 
-const filterChart = (period) => {
-    renderChart(period);
-    document.querySelectorAll('.filter-btn').forEach(btn => {
-        btn.classList.toggle('bg-indigo-600', btn.textContent.toLowerCase().includes(period));
-        btn.classList.toggle('text-white', btn.textContent.toLowerCase().includes(period));
-        btn.classList.toggle('bg-white', !btn.textContent.toLowerCase().includes(period));
-        btn.classList.toggle('text-gray-700', !btn.textContent.toLowerCase().includes(period));
+const filterDashboardCharts = (period) => {
+    dashboardPeriodFilter = period;
+    document.querySelectorAll('.dashboard-filter-btn').forEach(btn => {
+        const btnPeriod = btn.getAttribute('data-period');
+        btn.classList.toggle('bg-indigo-600', btnPeriod === period);
+        btn.classList.toggle('text-white', btnPeriod === period);
+        btn.classList.toggle('bg-white', btnPeriod !== period);
+        btn.classList.toggle('text-gray-700', btnPeriod !== period);
     });
+    renderDashboardCharts(period);
 };
 
 const populateFilters = () => {
@@ -309,7 +335,7 @@ const filterHistoryPeriod = (period) => {
     renderHistory();
 };
 
-// --- INICIALIZAÇÃO E EVENT LISTENERS ---
+// --- INICIALIZAÇÃO E EVENT LISTENERS (transactions part is modified) ---
 document.addEventListener('DOMContentLoaded', () => {
     loadData();
     renderTotalBalance();
@@ -319,10 +345,8 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('source-form').addEventListener('submit', (e) => {
         e.preventDefault();
         sources.push({
-            id: `src_${Date.now()}`,
-            name: document.getElementById('source-name').value,
-            type: document.getElementById('source-type').value,
-            balance: parseFloat(document.getElementById('source-balance').value)
+            id: `src_${Date.now()}`, name: e.target.elements['source-name'].value,
+            type: e.target.elements['source-type'].value, balance: parseFloat(e.target.elements['source-balance'].value)
         });
         saveData();
         renderTotalBalance();
@@ -333,7 +357,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     document.getElementById('project-form').addEventListener('submit', (e) => {
         e.preventDefault();
-        projects.push({ id: `proj_${Date.now()}`, name: document.getElementById('project-name').value, transactions: [] });
+        projects.push({ id: `proj_${Date.now()}`, name: e.target.elements['project-name'].value, transactions: [] });
         saveData();
         renderProjects();
         closeModal('project-modal');
@@ -342,23 +366,20 @@ document.addEventListener('DOMContentLoaded', () => {
 
     document.getElementById('transaction-form').addEventListener('submit', (e) => {
         e.preventDefault();
-        const sector = document.getElementById('transaction-sector').value;
-        const subSector = document.getElementById('transaction-subsector').value;
-        const type = document.getElementById('transaction-type').value;
-        const amount = parseFloat(document.getElementById('transaction-amount').value);
-        const description = document.getElementById('transaction-description').value;
-        const date = document.getElementById('transaction-date').value;
+        const form = e.target;
+        const sector = form.elements['transaction-sector'].value;
+        const subSector = form.elements['transaction-subsector'].value;
+        const type = form.elements['transaction-type'].value;
+        const amount = parseFloat(form.elements['transaction-amount'].value);
+        const description = form.elements['transaction-description'].value;
+        const date = form.elements['transaction-date'].value;
         const project = projects.find(p => p.id === currentProjectId);
-
-        if (!project) {
-             console.error('Projeto inválido.');
-             return;
-        }
+        if (!project) return console.error('Projeto inválido.');
 
         if (sector === 'Financeiro' && subSector === 'Captação' && type === 'revenue') {
             const newSource = {
                 id: `src_${Date.now()}`, name: description,
-                type: document.getElementById('captacao-source-type').value, balance: amount
+                type: form.elements['captacao-source-type'].value, balance: amount
             };
             sources.push(newSource);
             project.transactions.push({ 
@@ -366,16 +387,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 sourceId: newSource.id, date, captacaoType: newSource.type
             });
         } else {
-            const sourceId = document.getElementById('transaction-source').value;
+            const sourceId = form.elements['transaction-source'].value;
             const source = sources.find(s => s.id === sourceId);
-            if (!source) {
-                console.error('Fonte de Recurso inválida.');
-                return;
-            }
+            if (!source) return console.error('Fonte de Recurso inválida.');
             source.balance += (type === 'revenue' ? amount : -amount);
             const newTransaction = { type, description, amount, sector, subSector, sourceId, date };
             if (sector === 'Financeiro' && subSector === 'Captação') {
-                newTransaction.captacaoType = document.getElementById('captacao-source-type').value;
+                newTransaction.captacaoType = form.elements['captacao-source-type'].value;
             }
             project.transactions.push(newTransaction);
         }
@@ -393,7 +411,6 @@ document.addEventListener('DOMContentLoaded', () => {
         updateSubsectorFilter();
         renderHistory();
     });
-
     document.getElementById('subsector-filter').addEventListener('change', (e) => {
         historyFilters.subsector = e.target.value;
         renderHistory();
