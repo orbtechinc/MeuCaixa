@@ -30,6 +30,14 @@
                     <!-- Projects will be inserted here by JS -->
                 </div>
             </div>
+
+            <!-- Investment Sources List -->
+            <div id="investment-sources-list-container" class="p-6">
+                <h2 class="text-2xl font-bold mb-4">Fontes de Recurso</h2>
+                <div id="investment-sources-list" class="space-y-3">
+                    <!-- Source items will be inserted here by JS -->
+                </div>
+            </div>
         </div>
 
         <!-- Sectors Page View -->
@@ -135,7 +143,6 @@
                     <select id="source-type" class="w-full p-2 border border-gray-300 rounded-lg" required>
                         <option>Banco</option>
                         <option>Corretora</option>
-                        <option>Investidor</option>
                         <option>Dinheiro Vivo</option>
                     </select>
                 </div>
@@ -190,10 +197,21 @@
                     </div>
                 </div>
                  <div class="mb-4">
-                    <label for="transaction-description" class="block text-sm font-medium text-gray-600 mb-1">Nome da Operação</label>
+                    <label for="transaction-description" class="block text-sm font-medium text-gray-600 mb-1">Nome da Operação / Investidor</label>
                     <input type="text" id="transaction-description" placeholder="Ex: Venda de licença" class="w-full p-2 border border-gray-300 rounded-lg" required>
                 </div>
-                 <div class="mb-4">
+                <!-- Fields for Captação only -->
+                <div id="captacao-fields" class="hidden">
+                    <div class="mb-4">
+                        <label for="captacao-source-type" class="block text-sm font-medium text-gray-600 mb-1">Fonte da Captação</label>
+                        <select id="captacao-source-type" class="w-full p-2 border border-gray-300 rounded-lg">
+                            <option>Investidor</option>
+                            <option>Empréstimo</option>
+                            <option>Crédito</option>
+                        </select>
+                    </div>
+                </div>
+                 <div id="transaction-source-wrapper" class="mb-4">
                     <label for="transaction-source" class="block text-sm font-medium text-gray-600 mb-1">Fonte de Investimento</label>
                     <select id="transaction-source" class="w-full p-2 border border-gray-300 rounded-lg" required>
                         <!-- Sources will be populated by JS -->
@@ -215,3 +233,4 @@
     <script src="script.js"></script>
 </body>
 </html>
+
