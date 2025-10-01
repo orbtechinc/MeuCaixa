@@ -1,17 +1,22 @@
 html, body {
     margin: 0;
     padding: 0;
+    height: 100%;
+    overflow: hidden; /* Previne a rolagem do body */
     font-family: 'Inter', sans-serif;
     background-color: #111827; /* bg-gray-900 */
 }
+
 /* Efeito de transição suave para os modais */
 .modal {
     transition: opacity 0.3s ease, visibility 0.3s ease;
     z-index: 50; /* Garante que o modal fique sobre tudo */
 }
+
 .modal-content {
     transition: transform 0.3s ease;
 }
+
 /* Efeito de transição para o carrossel */
 #project-carousel, #sectors-carousel {
     transition: transform 0.4s ease-in-out;
@@ -41,21 +46,5 @@ input[type="date"]::-webkit-calendar-picker-indicator {
 }
 
 .sub-sector-card {
-    background-color: rgb(55 65 81 / 0.5);
-    padding: 1rem;
-    border-radius: 0.75rem;
-    display: flex;
-    align-items: center;
-    cursor: pointer;
-    transition-property: color, background-color, border-color, text-decoration-color, fill, stroke;
-    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
-    transition-duration: 150ms;
-}
-
-.sub-sector-card > :not([hidden]) ~ :not([hidden]) {
-    margin-left: 1rem;
-}
-
-.sub-sector-card:hover {
-    background-color: rgb(75 85 99 / 0.5);
+    @apply bg-gray-700/50 p-4 rounded-xl flex items-center space-x-4 cursor-pointer hover:bg-gray-600/50 transition-colors;
 }
