@@ -3,8 +3,14 @@ let sources = [];
 let projects = [];
 let chartInstance = null;
 let currentProjectId = null;
-// Listener para controlar a UI do modal de transação
 let transactionTypeSelectListener = null; 
+let historyFilters = { period: 'week', sector: 'all', subsector: 'all' };
+const subsectorsBySector = {
+    'all': ['Todos os Subsetores'],
+    'Financeiro': ['Todos', 'Planejamento', 'Captação', 'Recursos'],
+    'Operacional': ['Todos', 'Treinamento', 'Armazenamento', 'Produção'],
+    'Comercial': ['Todos', 'Marketing', 'Relacionamento', 'Vendas']
+};
 
 // --- FUNÇÕES UTILITÁRIAS ---
 const formatCurrency = (value) => {
@@ -115,6 +121,63 @@ const renderChart = (period = 'week') => {
     });
 };
 
+const renderHistory = () => {
+    const list = document.getElementById('history-list');
+    list.innerHTML = '';
+    
+    let allTransactions = [];
+    projects.forEach(p => {
+        p.transactions.forEach(t => {
+            allTransactions.push({ ...t, projectName: p.name });
+        });
+    });
+
+    const now = new Date();
+    let startDate;
+    if (historyFilters.period === 'week') {
+        startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() - (now.getDay() === 0 ? 6 : now.getDay() - 1));
+    } else if (historyFilters.period === 'month') {
+        startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+    } else { // year
+        startDate = new Date(now.getFullYear(), 0, 1);
+    }
+    startDate.setHours(0, 0, 0, 0);
+
+    let filteredTransactions = allTransactions.filter(t => new Date(t.date) >= startDate);
+    
+    if (historyFilters.sector !== 'all') {
+        filteredTransactions = filteredTransactions.filter(t => t.sector === historyFilters.sector);
+    }
+    
+    if (historyFilters.subsector !== 'all') {
+        filteredTransactions = filteredTransactions.filter(t => t.subSector === historyFilters.subsector);
+    }
+
+    filteredTransactions.sort((a, b) => new Date(b.date) - new Date(a.date));
+
+    if (filteredTransactions.length === 0) {
+        list.innerHTML = `<p class="text-gray-500 text-center col-span-full">Nenhuma operação encontrada.</p>`;
+        return;
+    }
+
+    filteredTransactions.forEach(t => {
+        const item = document.createElement('div');
+        const isRevenue = t.type === 'revenue';
+        item.className = `history-item ${isRevenue ? 'history-item-revenue' : 'history-item-cost'}`;
+        
+        item.innerHTML = `
+            <div class="flex-grow pr-4">
+                <p class="font-bold text-gray-800">${t.description}</p>
+                <p class="text-sm text-gray-500">${t.projectName} - ${new Date(t.date).toLocaleDateString('pt-BR')}</p>
+                <p class="text-xs text-gray-400">${t.sector} / ${t.subSector}</p>
+            </div>
+            <p class="font-bold text-lg whitespace-nowrap ${isRevenue ? 'text-green-600' : 'text-red-600'}">${isRevenue ? '+' : '-'} ${formatCurrency(t.amount)}</p>
+        `;
+        list.appendChild(item);
+    });
+};
+
+
 // --- CONTROLE DA UI ---
 const openModal = (modalId) => document.getElementById(modalId).classList.remove('hidden');
 const closeModal = (modalId) => document.getElementById(modalId).classList.add('hidden');
@@ -135,7 +198,6 @@ const openTransactionModal = (sector, subSector) => {
     const descriptionInput = document.getElementById('transaction-description');
     const transactionTypeSelect = document.getElementById('transaction-type');
 
-    // Limpa listener antigo para evitar duplicação
     if (transactionTypeSelectListener) {
         transactionTypeSelect.removeEventListener('change', transactionTypeSelectListener);
     }
@@ -144,21 +206,16 @@ const openTransactionModal = (sector, subSector) => {
         captacaoFields.classList.remove('hidden');
         descriptionInput.placeholder = "Ex: Investidor Anjo, Empréstimo BMG";
 
-        // Define a função do listener
         transactionTypeSelectListener = () => {
-            if (transactionTypeSelect.value === 'revenue') {
-                transactionSourceWrapper.classList.add('hidden'); // Oculta para receita
-            } else {
-                transactionSourceWrapper.classList.remove('hidden'); // Mostra para custo
-            }
+            transactionSourceWrapper.classList.toggle('hidden', transactionTypeSelect.value === 'revenue');
         };
         transactionTypeSelect.addEventListener('change', transactionTypeSelectListener);
-        transactionTypeSelectListener(); // Executa uma vez para definir o estado inicial
+        transactionTypeSelectListener();
 
     } else {
         captacaoFields.classList.add('hidden');
         descriptionInput.placeholder = "Ex: Venda de licença";
-        transactionSourceWrapper.classList.remove('hidden'); // Garante que esteja visível
+        transactionSourceWrapper.classList.remove('hidden');
     }
     
     const sourceSelect = document.getElementById('transaction-source');
@@ -181,10 +238,27 @@ const openTransactionModal = (sector, subSector) => {
 const switchView = (viewId, projectId = null) => {
     if (projectId) currentProjectId = projectId;
     
-    ['home-view', 'dashboard-view', 'sectors-view'].forEach(id => document.getElementById(id).classList.add('hidden'));
+    ['home-view', 'dashboard-view', 'sectors-view', 'history-view'].forEach(id => document.getElementById(id).classList.add('hidden'));
     document.getElementById(viewId).classList.remove('hidden');
 
+    const createProjectBtn = document.getElementById('create-project-btn');
+    const historyBtn = document.getElementById('history-btn');
+
+    // Lógica para trocar os botões de navegação
+    if (viewId === 'sectors-view') {
+        createProjectBtn.classList.add('hidden');
+        historyBtn.classList.remove('hidden');
+    } else {
+        createProjectBtn.classList.remove('hidden');
+        historyBtn.classList.add('hidden');
+    }
+
+    // Lógica específica de cada view
     if (viewId === 'dashboard-view') renderChart();
+    if (viewId === 'history-view') {
+        populateFilters();
+        renderHistory();
+    }
     if (viewId === 'sectors-view') {
          const project = projects.find(p => p.id === currentProjectId);
          if(project) document.getElementById('sectors-project-name').textContent = project.name;
@@ -199,6 +273,40 @@ const filterChart = (period) => {
         btn.classList.toggle('bg-white', !btn.textContent.toLowerCase().includes(period));
         btn.classList.toggle('text-gray-700', !btn.textContent.toLowerCase().includes(period));
     });
+};
+
+const populateFilters = () => {
+    const sectorSelect = document.getElementById('sector-filter');
+    sectorSelect.innerHTML = '<option value="all">Todos os Setores</option>';
+    Object.keys(subsectorsBySector).filter(s => s !== 'all').forEach(sector => {
+        sectorSelect.innerHTML += `<option value="${sector}">${sector}</option>`;
+    });
+    sectorSelect.value = historyFilters.sector;
+    updateSubsectorFilter();
+};
+
+const updateSubsectorFilter = () => {
+    const sector = document.getElementById('sector-filter').value;
+    const subsectorSelect = document.getElementById('subsector-filter');
+    subsectorSelect.innerHTML = '';
+    const subsectors = subsectorsBySector[sector] || [];
+    subsectors.forEach(sub => {
+        const value = sub.toLowerCase().includes('todos') ? 'all' : sub;
+        subsectorSelect.innerHTML += `<option value="${value}">${sub}</option>`;
+    });
+    subsectorSelect.value = historyFilters.subsector;
+};
+
+const filterHistoryPeriod = (period) => {
+    historyFilters.period = period;
+    document.querySelectorAll('.history-filter-btn.period-btn').forEach(btn => {
+        const btnPeriod = btn.getAttribute('data-period');
+        btn.classList.toggle('bg-indigo-600', btnPeriod === period);
+        btn.classList.toggle('text-white', btnPeriod === period);
+        btn.classList.toggle('bg-white', btnPeriod !== period);
+        btn.classList.toggle('text-gray-700', btnPeriod !== period);
+    });
+    renderHistory();
 };
 
 // --- INICIALIZAÇÃO E EVENT LISTENERS ---
@@ -247,36 +355,24 @@ document.addEventListener('DOMContentLoaded', () => {
              return;
         }
 
-        // Lógica de Captação como Receita: Cria uma nova fonte
         if (sector === 'Financeiro' && subSector === 'Captação' && type === 'revenue') {
             const newSource = {
-                id: `src_${Date.now()}`,
-                name: description,
-                type: document.getElementById('captacao-source-type').value,
-                balance: amount
+                id: `src_${Date.now()}`, name: description,
+                type: document.getElementById('captacao-source-type').value, balance: amount
             };
             sources.push(newSource);
-
             project.transactions.push({ 
                 type, description, amount, sector, subSector, 
-                sourceId: newSource.id, // Vincula a transação à nova fonte
-                date,
-                captacaoType: newSource.type
+                sourceId: newSource.id, date, captacaoType: newSource.type
             });
-
         } else {
-            // Lógica Padrão para todas as outras transações (incluindo custos de captação)
             const sourceId = document.getElementById('transaction-source').value;
             const source = sources.find(s => s.id === sourceId);
-
             if (!source) {
                 console.error('Fonte de Recurso inválida.');
-                // Futuramente, pode-se adicionar um alerta amigável aqui
                 return;
             }
-
             source.balance += (type === 'revenue' ? amount : -amount);
-            
             const newTransaction = { type, description, amount, sector, subSector, sourceId, date };
             if (sector === 'Financeiro' && subSector === 'Captação') {
                 newTransaction.captacaoType = document.getElementById('captacao-source-type').value;
@@ -290,4 +386,17 @@ document.addEventListener('DOMContentLoaded', () => {
         renderInvestmentSources();
         closeModal('transaction-modal');
     });
+
+    document.getElementById('sector-filter').addEventListener('change', (e) => {
+        historyFilters.sector = e.target.value;
+        historyFilters.subsector = 'all'; 
+        updateSubsectorFilter();
+        renderHistory();
+    });
+
+    document.getElementById('subsector-filter').addEventListener('change', (e) => {
+        historyFilters.subsector = e.target.value;
+        renderHistory();
+    });
 });
+
