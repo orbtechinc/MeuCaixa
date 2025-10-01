@@ -582,97 +582,87 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
 
-    // --- PROJECT CAROUSEL LOGIC ---
-    let isDragging = false, startPos = 0, currentTranslate = 0, prevTranslate = 0;
-    function updateCarouselPosition() {
-        const container = projectCarousel.parentElement;
-        if (!container) return;
-        const slideWidth = container.offsetWidth;
-        currentTranslate = currentProjectIndex * -slideWidth;
-        projectCarousel.style.transform = `translateX(${currentTranslate}px)`;
-        prevTranslate = currentTranslate;
-        updateDots();
-    }
-    function updateDots() {
-        document.querySelectorAll('#carousel-dots > div').forEach((dot, index) => {
-            dot.classList.toggle('bg-indigo-500', index === currentProjectIndex);
-            dot.classList.toggle('bg-gray-600', index !== currentProjectIndex);
+    // --- CAROUSEL LOGIC ---
+    function setupCarousel(carouselEl, dotsEl, indexState) {
+        let isDragging = false, startPos = 0, currentTranslate = 0, prevTranslate = 0;
+        let currentIndex = indexState.get();
+
+        function updatePosition() {
+            const container = carouselEl.parentElement;
+            if (!container) return;
+            const slideWidth = container.offsetWidth;
+            currentTranslate = currentIndex * -slideWidth;
+            carouselEl.style.transform = `translateX(${currentTranslate}px)`;
+            prevTranslate = currentTranslate;
+            updateDots();
+        }
+
+        function updateDots() {
+            if (!dotsEl) return;
+            Array.from(dotsEl.children).forEach((dot, index) => {
+                dot.classList.toggle('bg-indigo-500', index === currentIndex);
+                dot.classList.toggle('bg-gray-600', index !== currentIndex);
+            });
+        }
+
+        carouselEl.addEventListener('touchstart', (e) => {
+            if (carouselEl.children.length <= 1) return;
+            isDragging = true;
+            startPos = e.touches[0].clientX;
+            carouselEl.style.transition = 'none';
         });
+
+        carouselEl.addEventListener('touchmove', (e) => {
+            if (!isDragging) return;
+            const currentPosition = e.touches[0].clientX;
+            currentTranslate = prevTranslate + currentPosition - startPos;
+            carouselEl.style.transform = `translateX(${currentTranslate}px)`;
+        });
+
+        carouselEl.addEventListener('touchend', (e) => {
+            if (!isDragging) return;
+            isDragging = false;
+            const movedBy = currentTranslate - prevTranslate;
+            const slideWidth = carouselEl.parentElement.offsetWidth;
+
+            if (movedBy < -slideWidth / 4 && currentIndex < carouselEl.children.length - 1) {
+                currentIndex++;
+            }
+            if (movedBy > slideWidth / 4 && currentIndex > 0) {
+                currentIndex--;
+            }
+
+            indexState.set(currentIndex);
+            carouselEl.style.transition = 'transform 0.4s ease-in-out';
+            updatePosition();
+        });
+
+        return { updatePosition };
     }
-    projectCarousel.addEventListener('touchstart', (e) => {
-        if(projects.length <= 1) return;
-        isDragging = true;
-        startPos = e.touches[0].clientX;
-        projectCarousel.style.transition = 'none';
-    });
-    projectCarousel.addEventListener('touchmove', (e) => {
-        if (!isDragging) return;
-        const currentPosition = e.touches[0].clientX;
-        currentTranslate = prevTranslate + currentPosition - startPos;
-        projectCarousel.style.transform = `translateX(${currentTranslate}px)`;
-    });
-    projectCarousel.addEventListener('touchend', (e) => {
-        if (!isDragging) return;
-        isDragging = false;
-        const movedBy = currentTranslate - prevTranslate;
 
-        if (movedBy < -50 && currentProjectIndex < projects.length - 1) currentProjectIndex++;
-        if (movedBy > 50 && currentProjectIndex > 0) currentProjectIndex--;
-        
-        projectCarousel.style.transition = 'transform 0.4s ease-in-out';
-        updateCarouselPosition();
-    });
+    const projectCarouselState = {
+        get: () => currentProjectIndex,
+        set: (val) => { currentProjectIndex = val; }
+    };
+     const sectorCarouselState = {
+        get: () => currentSectorIndex,
+        set: (val) => { currentSectorIndex = val; }
+    };
 
-    // --- SECTOR CAROUSEL LOGIC ---
-    let isSectorDragging = false, startSectorPos = 0, currentSectorTranslate = 0, prevSectorTranslate = 0;
+    const { updatePosition: updateCarouselPosition } = setupCarousel(projectCarousel, carouselDots, projectCarouselState);
+    const { updatePosition: updateSectorCarouselPosition } = setupCarousel(sectorsCarousel, sectorsCarouselDots, sectorCarouselState);
+
     function initializeSectorCarousel() {
         sectorsCarouselDots.innerHTML = '';
         const sectorCount = sectorsCarousel.children.length;
         for (let i = 0; i < sectorCount; i++) {
             const dot = document.createElement('div');
-            dot.className = `w-2 h-2 rounded-full transition-colors ${i === 0 ? 'bg-indigo-500' : 'bg-gray-600'}`;
+            dot.className = 'w-2 h-2 rounded-full transition-colors';
             sectorsCarouselDots.appendChild(dot);
         }
-        currentSectorIndex = 0;
+        sectorCarouselState.set(0);
         updateSectorCarouselPosition();
     }
-    function updateSectorCarouselPosition() {
-        const container = sectorsCarousel.parentElement;
-        if (!container) return;
-        const slideWidth = container.offsetWidth;
-        currentSectorTranslate = currentSectorIndex * -slideWidth;
-        sectorsCarousel.style.transform = `translateX(${currentSectorTranslate}px)`;
-        prevSectorTranslate = currentSectorTranslate;
-        updateSectorDots();
-    }
-    function updateSectorDots() {
-        document.querySelectorAll('#sectors-carousel-dots > div').forEach((dot, index) => {
-            dot.classList.toggle('bg-indigo-500', index === currentSectorIndex);
-            dot.classList.toggle('bg-gray-600', index !== currentSectorIndex);
-        });
-    }
-    sectorsCarousel.addEventListener('touchstart', (e) => {
-        isSectorDragging = true;
-        startSectorPos = e.touches[0].clientX;
-        sectorsCarousel.style.transition = 'none';
-    });
-    sectorsCarousel.addEventListener('touchmove', (e) => {
-        if (!isSectorDragging) return;
-        const currentPosition = e.touches[0].clientX;
-        currentSectorTranslate = prevSectorTranslate + currentPosition - startPos;
-        sectorsCarousel.style.transform = `translateX(${currentSectorTranslate}px)`;
-    });
-    sectorsCarousel.addEventListener('touchend', (e) => {
-        if (!isSectorDragging) return;
-        isSectorDragging = false;
-        const movedBy = currentSectorTranslate - prevSectorTranslate;
-
-        if (movedBy < -50 && currentSectorIndex < sectorsCarousel.children.length - 1) currentSectorIndex++;
-        if (movedBy > 50 && currentSectorIndex > 0) currentSectorIndex--;
-
-        sectorsCarousel.style.transition = 'transform 0.4s ease-in-out';
-        updateSectorCarouselPosition();
-    });
 
     window.addEventListener('resize', () => {
         setTimeout(() => {
@@ -988,42 +978,4 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
 
                 const newChart = new Chart(ctx, {
-                    type: 'line',
-                    data: {
-                        labels: chartLabels,
-                        datasets: [{ label: 'Resultado', data: chartData, borderColor: 'rgb(74, 222, 128)', tension: 0.2, pointRadius: 1, pointBackgroundColor: 'rgb(74, 222, 128)' }]
-                    },
-                    options: {
-                        responsive: true, maintainAspectRatio: false,
-                        scales: {
-                            y: { ticks: { display: true, color: '#9CA3AF', font: { size: 10 }, callback: (v) => (v/1000)+'k' }, grid: { color: 'rgba(255, 255, 255, 0.05)' } },
-                            x: { ticks: { display: true, color: '#9CA3AF', font: { size: 10 }, autoSkip: true, maxRotation: 45 }, grid: { display: false } }
-                        },
-                        plugins: { legend: { display: false }, tooltip: { callbacks: { label: (c) => `R$ ${c.raw.toFixed(2)}` } } }
-                    }
-                });
-                projectCharts.push(newChart);
-            });
-        }
-        document.querySelector('#results-page h1').textContent = 'Dashboard de Resultados';
-    }
-
-    // --- INITIALIZATION ---
-    function showInitialPage() {
-        // Garante que todas as paginas estao escondidas, exceto a home
-        [sectorsPage, historyPage, resultsPage].forEach(page => {
-            page.classList.add('hidden');
-            page.classList.remove('flex');
-        });
-        homePage.classList.remove('hidden');
-        homePage.classList.add('flex');
-
-        updateNav('home');
-        toggleNavBar(true);
-        renderProjects();
-        updateTotalBalance();
-        renderInvestments();
-    }
-
-    showInitialPage();
-});
+                    type: '
