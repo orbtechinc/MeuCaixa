@@ -3,6 +3,8 @@ let sources = [];
 let projects = [];
 let chartInstance = null;
 let currentProjectId = null;
+// Listener para controlar a UI do modal de transação
+let transactionTypeSelectListener = null; 
 
 // --- FUNÇÕES UTILITÁRIAS ---
 const formatCurrency = (value) => {
@@ -121,7 +123,6 @@ const openTransactionModal = (sector, subSector) => {
     const project = projects.find(p => p.id === currentProjectId);
     if (!project) return;
     
-    // Reseta o formulário ao abrir
     document.getElementById('transaction-form').reset();
 
     document.getElementById('transaction-project-name').textContent = `${project.name} / ${sector} / ${subSector}`;
@@ -132,20 +133,34 @@ const openTransactionModal = (sector, subSector) => {
     const captacaoFields = document.getElementById('captacao-fields');
     const transactionSourceWrapper = document.getElementById('transaction-source-wrapper');
     const descriptionInput = document.getElementById('transaction-description');
+    const transactionTypeSelect = document.getElementById('transaction-type');
+
+    // Limpa listener antigo para evitar duplicação
+    if (transactionTypeSelectListener) {
+        transactionTypeSelect.removeEventListener('change', transactionTypeSelectListener);
+    }
     
-    // Lógica simplificada para mostrar/esconder campos de Captação
     if (sector === 'Financeiro' && subSector === 'Captação') {
         captacaoFields.classList.remove('hidden');
         descriptionInput.placeholder = "Ex: Investidor Anjo, Empréstimo BMG";
+
+        // Define a função do listener
+        transactionTypeSelectListener = () => {
+            if (transactionTypeSelect.value === 'revenue') {
+                transactionSourceWrapper.classList.add('hidden'); // Oculta para receita
+            } else {
+                transactionSourceWrapper.classList.remove('hidden'); // Mostra para custo
+            }
+        };
+        transactionTypeSelect.addEventListener('change', transactionTypeSelectListener);
+        transactionTypeSelectListener(); // Executa uma vez para definir o estado inicial
+
     } else {
         captacaoFields.classList.add('hidden');
         descriptionInput.placeholder = "Ex: Venda de licença";
+        transactionSourceWrapper.classList.remove('hidden'); // Garante que esteja visível
     }
     
-    // Garante que a seleção de fonte de recurso esteja sempre visível
-    transactionSourceWrapper.classList.remove('hidden');
-
-    // Popula o dropdown de fontes de recurso
     const sourceSelect = document.getElementById('transaction-source');
     sourceSelect.innerHTML = '';
     
@@ -226,24 +241,48 @@ document.addEventListener('DOMContentLoaded', () => {
         const description = document.getElementById('transaction-description').value;
         const date = document.getElementById('transaction-date').value;
         const project = projects.find(p => p.id === currentProjectId);
-        const sourceId = document.getElementById('transaction-source').value;
-        const source = sources.find(s => s.id === sourceId);
 
-        if (!project || !source) {
-            console.error('Projeto ou Fonte de Recurso inválida.');
-            // Futuramente, mostrar um alerta amigável para o usuário aqui
-            return;
+        if (!project) {
+             console.error('Projeto inválido.');
+             return;
         }
 
-        // Lógica unificada: sempre atualiza o saldo da fonte selecionada
-        source.balance += (type === 'revenue' ? amount : -amount);
-        
-        // Adiciona a transação ao projeto
-        const newTransaction = { type, description, amount, sector, subSector, sourceId, date };
-        if (sector === 'Financeiro' && subSector === 'Captação') {
-            newTransaction.captacaoType = document.getElementById('captacao-source-type').value;
+        // Lógica de Captação como Receita: Cria uma nova fonte
+        if (sector === 'Financeiro' && subSector === 'Captação' && type === 'revenue') {
+            const newSource = {
+                id: `src_${Date.now()}`,
+                name: description,
+                type: document.getElementById('captacao-source-type').value,
+                balance: amount
+            };
+            sources.push(newSource);
+
+            project.transactions.push({ 
+                type, description, amount, sector, subSector, 
+                sourceId: newSource.id, // Vincula a transação à nova fonte
+                date,
+                captacaoType: newSource.type
+            });
+
+        } else {
+            // Lógica Padrão para todas as outras transações (incluindo custos de captação)
+            const sourceId = document.getElementById('transaction-source').value;
+            const source = sources.find(s => s.id === sourceId);
+
+            if (!source) {
+                console.error('Fonte de Recurso inválida.');
+                // Futuramente, pode-se adicionar um alerta amigável aqui
+                return;
+            }
+
+            source.balance += (type === 'revenue' ? amount : -amount);
+            
+            const newTransaction = { type, description, amount, sector, subSector, sourceId, date };
+            if (sector === 'Financeiro' && subSector === 'Captação') {
+                newTransaction.captacaoType = document.getElementById('captacao-source-type').value;
+            }
+            project.transactions.push(newTransaction);
         }
-        project.transactions.push(newTransaction);
         
         saveData();
         renderProjects();
