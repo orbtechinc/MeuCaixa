@@ -3,7 +3,7 @@ let sources = [];
 let projects = [];
 let activeCharts = []; // Para rastrear e destruir gráficos antigos
 let currentProjectId = null;
-let transactionTypeSelectListener = null; 
+let transactionTypeSelectListener = null;
 let historyFilters = { period: 'week', sector: 'all', subsector: 'all' };
 let dashboardPeriodFilter = 'week';
 const subsectorsBySector = {
@@ -44,13 +44,13 @@ const renderTotalBalance = () => {
 
 const renderProjects = () => {
     const carousel = document.getElementById('project-carousel');
-    carousel.innerHTML = ''; 
+    carousel.innerHTML = '';
 
     if (projects.length === 0) {
         carousel.innerHTML = `<div class="flex-shrink-0 w-full max-w-xs mx-auto bg-white rounded-xl shadow-lg flex flex-col items-center justify-center text-center p-6 snap-center aspect-[1080/1220]"><svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 text-gray-300 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 13h6m-3-3v6m-9 1V7a2 2 0 012-2h6l2 2h6a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z" /></svg><h3 class="font-bold text-lg">Nenhum projeto ainda</h3><p class="text-gray-500">Clique em "Criar Projeto" para começar.</p></div>`;
         return;
     }
-    
+
     projects.forEach(project => {
         const projectBalance = project.transactions.reduce((bal, t) => bal + (t.type === 'revenue' ? t.amount : -t.amount), 0);
         const card = document.createElement('div');
@@ -89,35 +89,43 @@ const destroyActiveCharts = () => {
     activeCharts = [];
 };
 
-function renderDashboardCharts(period = 'week') {
+function renderProjectDashboardCharts(period = 'week') {
     destroyActiveCharts();
-    const container = document.getElementById('charts-container');
+    const container = document.getElementById('project-charts-container');
     container.innerHTML = '';
 
+    const transactionsInPeriod = projects.flatMap(p => p.transactions).filter(t => isDateInPeriod(t.date, period));
+    
     // Render Pie Charts
     const pieData = projects.reduce((acc, project) => {
-        const revenue = project.transactions.filter(t => t.type === 'revenue').reduce((sum, t) => sum + t.amount, 0);
-        const cost = project.transactions.filter(t => t.type === 'cost').reduce((sum, t) => sum + t.amount, 0);
-        if (revenue > 0) acc.revenues.data.push(revenue);
-        if (revenue > 0) acc.revenues.labels.push(project.name);
-        if (cost > 0) acc.costs.data.push(cost);
-        if (cost > 0) acc.costs.labels.push(project.name);
+        const revenue = project.transactions.filter(t => t.type === 'revenue' && isDateInPeriod(t.date, period)).reduce((sum, t) => sum + t.amount, 0);
+        const cost = project.transactions.filter(t => t.type === 'cost' && isDateInPeriod(t.date, period)).reduce((sum, t) => sum + t.amount, 0);
+        if (revenue > 0) {
+            acc.revenues.data.push(revenue);
+            acc.revenues.labels.push(project.name);
+        }
+        if (cost > 0) {
+            acc.costs.data.push(cost);
+            acc.costs.labels.push(project.name);
+        }
         return acc;
     }, { revenues: { labels: [], data: [] }, costs: { labels: [], data: [] } });
 
     if (pieData.revenues.data.length > 0) {
-        container.innerHTML += `<div class="chart-card"><h2>Eficiência de Receita por Projeto</h2><canvas id="revenuePieChart"></canvas></div>`;
+        container.innerHTML += `<div class="chart-card"><h2>Receita por Projeto</h2><canvas id="revenuePieChart"></canvas></div>`;
         const revenueCtx = document.getElementById('revenuePieChart').getContext('2d');
-        activeCharts.push(new Chart(revenueCtx, { type: 'pie', data: { labels: pieData.revenues.labels, datasets: [{ data: pieData.revenues.data, backgroundColor: ['#4CAF50', '#8BC34A', '#CDDC39', '#FFEB3B'] }] } }));
+        activeCharts.push(new Chart(revenueCtx, { type: 'pie', data: { labels: pieData.revenues.labels, datasets: [{ data: pieData.revenues.data, backgroundColor: ['#4CAF50', '#8BC34A', '#CDDC39', '#FFEB3B', '#FFC107'] }] }, options: { responsive: true, maintainAspectRatio: false } }));
     }
      if (pieData.costs.data.length > 0) {
-        container.innerHTML += `<div class="chart-card"><h2>Eficiência de Custo por Projeto</h2><canvas id="costPieChart"></canvas></div>`;
+        container.innerHTML += `<div class="chart-card"><h2>Custo por Projeto</h2><canvas id="costPieChart"></canvas></div>`;
         const costCtx = document.getElementById('costPieChart').getContext('2d');
-        activeCharts.push(new Chart(costCtx, { type: 'pie', data: { labels: pieData.costs.labels, datasets: [{ data: pieData.costs.data, backgroundColor: ['#F44336', '#E91E63', '#9C27B0', '#673AB7'] }] } }));
+        activeCharts.push(new Chart(costCtx, { type: 'pie', data: { labels: pieData.costs.labels, datasets: [{ data: pieData.costs.data, backgroundColor: ['#F44336', '#E91E63', '#9C27B0', '#673AB7', '#3F51B5'] }] }, options: { responsive: true, maintainAspectRatio: false } }));
     }
 
     // Render Bar Charts per Project
     projects.forEach(project => {
+        if (project.transactions.filter(t => isDateInPeriod(t.date, period)).length === 0) return;
+
         const chartId = `projectChart_${project.id}`;
         container.innerHTML += `<div class="chart-card"><h2>Desempenho: ${project.name}</h2><canvas id="${chartId}"></canvas></div>`;
         const ctx = document.getElementById(chartId).getContext('2d');
@@ -133,52 +141,74 @@ function renderDashboardCharts(period = 'week') {
                     { label: 'Custo', data: data.costs, backgroundColor: 'rgba(255, 99, 132, 0.6)' }
                 ]
             },
-            options: { scales: { x: { stacked: true }, y: { stacked: true, beginAtZero: true } } }
+            options: { scales: { y: { beginAtZero: true } }, responsive: true, maintainAspectRatio: false }
         }));
     });
 }
 
-function renderSubsectorCharts() {
+function renderSectorDashboardCharts() {
     destroyActiveCharts();
-    const container = document.getElementById('subsector-charts-container');
+    const container = document.getElementById('sector-charts-container');
     container.innerHTML = '';
     const project = projects.find(p => p.id === currentProjectId);
     if (!project) return;
 
-    const dataBySubsector = project.transactions.reduce((acc, t) => {
-        if (!acc[t.subSector]) acc[t.subSector] = { revenue: 0, cost: 0 };
-        if (t.type === 'revenue') acc[t.subSector].revenue += t.amount;
-        else acc[t.subSector].cost += t.amount;
-        return acc;
-    }, {});
-    
-    for (const subsector in dataBySubsector) {
+    const allSubsectors = [...subsectorsBySector.Financeiro, ...subsectorsBySector.Operacional, ...subsectorsBySector.Comercial].filter(s => s !== 'Todos');
+
+    allSubsectors.forEach(subsector => {
+        const transactions = project.transactions.filter(t => t.subSector === subsector);
+        if (transactions.length === 0) return;
+
+        const data = {
+            revenue: transactions.filter(t => t.type === 'revenue').reduce((s, t) => s + t.amount, 0),
+            cost: transactions.filter(t => t.type === 'cost').reduce((s, t) => s + t.amount, 0)
+        };
+
         const chartId = `subsectorChart_${subsector.replace(/\s+/g, '')}`;
         container.innerHTML += `<div class="chart-card"><h3>Desempenho: ${subsector}</h3><canvas id="${chartId}"></canvas></div>`;
         const ctx = document.getElementById(chartId).getContext('2d');
+        
         activeCharts.push(new Chart(ctx, {
             type: 'bar',
             data: {
                 labels: ['Receita', 'Custo'],
                 datasets: [{
                     label: subsector,
-                    data: [dataBySubsector[subsector].revenue, dataBySubsector[subsector].cost],
+                    data: [data.revenue, data.cost],
                     backgroundColor: ['rgba(75, 192, 192, 0.6)', 'rgba(255, 99, 132, 0.6)']
                 }]
             },
-            options: { indexAxis: 'y', scales: { y: { beginAtZero: true } } }
+            options: { scales: { y: { beginAtZero: true } }, responsive: true, maintainAspectRatio: false }
         }));
+    });
+}
+
+function isDateInPeriod(dateString, period) {
+    const date = new Date(dateString);
+    const now = new Date();
+    if (period === 'week') {
+        const startOfWeek = new Date(now.setDate(now.getDate() - now.getDay()));
+        startOfWeek.setHours(0,0,0,0);
+        return date >= startOfWeek;
     }
+    if (period === 'month') {
+        return date.getMonth() === now.getMonth() && date.getFullYear() === now.getFullYear();
+    }
+    if (period === 'year') {
+        return date.getFullYear() === now.getFullYear();
+    }
+    return false;
 }
 
 function aggregateDataForPeriod(transactions, period) {
-    // This is a simplified aggregation. A real app might use a library like date-fns.
     const result = { labels: [], revenues: [], costs: [] };
+    const filtered = transactions.filter(t => isDateInPeriod(t.date, period));
+
     if (period === 'week') {
         result.labels = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
         result.revenues = Array(7).fill(0);
         result.costs = Array(7).fill(0);
-        transactions.forEach(t => {
+        filtered.forEach(t => {
             const day = new Date(t.date).getUTCDay();
             if (t.type === 'revenue') result.revenues[day] += t.amount;
             else result.costs[day] += t.amount;
@@ -188,7 +218,7 @@ function aggregateDataForPeriod(transactions, period) {
         result.labels = Array.from({ length: daysInMonth }, (_, i) => i + 1);
         result.revenues = Array(daysInMonth).fill(0);
         result.costs = Array(daysInMonth).fill(0);
-         transactions.forEach(t => {
+         filtered.forEach(t => {
             const day = new Date(t.date).getUTCDate() - 1;
             if (t.type === 'revenue') result.revenues[day] += t.amount;
             else result.costs[day] += t.amount;
@@ -197,7 +227,7 @@ function aggregateDataForPeriod(transactions, period) {
         result.labels = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
         result.revenues = Array(12).fill(0);
         result.costs = Array(12).fill(0);
-         transactions.forEach(t => {
+         filtered.forEach(t => {
             const month = new Date(t.date).getUTCMonth();
             if (t.type === 'revenue') result.revenues[month] += t.amount;
             else result.costs[month] += t.amount;
@@ -260,9 +290,13 @@ const openTransactionModal = (sector, subSector) => {
 };
 
 const switchView = (viewId, projectId = null) => {
+    // projectId is only null when coming from a non-project context
+    if (viewId === 'home-view' || viewId === 'project-dashboard-view' || viewId === 'history-view') {
+        currentProjectId = null;
+    }
     if (projectId) currentProjectId = projectId;
     
-    ['home-view', 'dashboard-view', 'sectors-view', 'history-view'].forEach(id => document.getElementById(id).classList.add('hidden'));
+    ['home-view', 'project-dashboard-view', 'sector-dashboard-view', 'sectors-view', 'history-view'].forEach(id => document.getElementById(id)?.classList.add('hidden'));
     document.getElementById(viewId).classList.remove('hidden');
 
     const createProjectBtn = document.getElementById('create-project-btn');
@@ -277,7 +311,8 @@ const switchView = (viewId, projectId = null) => {
     }
 
     destroyActiveCharts(); // Clear charts when switching views
-    if (viewId === 'dashboard-view') renderDashboardCharts(dashboardPeriodFilter);
+    if (viewId === 'project-dashboard-view') renderProjectDashboardCharts(dashboardPeriodFilter);
+    if (viewId === 'sector-dashboard-view') renderSectorDashboardCharts();
     if (viewId === 'history-view') {
         populateFilters();
         renderHistory();
@@ -285,7 +320,14 @@ const switchView = (viewId, projectId = null) => {
     if (viewId === 'sectors-view') {
          const project = projects.find(p => p.id === currentProjectId);
          if(project) document.getElementById('sectors-project-name').textContent = project.name;
-         renderSubsectorCharts();
+    }
+};
+
+const showResults = () => {
+    if (currentProjectId) {
+        switchView('sector-dashboard-view', currentProjectId);
+    } else {
+        switchView('project-dashboard-view');
     }
 };
 
@@ -298,7 +340,7 @@ const filterDashboardCharts = (period) => {
         btn.classList.toggle('bg-white', btnPeriod !== period);
         btn.classList.toggle('text-gray-700', btnPeriod !== period);
     });
-    renderDashboardCharts(period);
+    renderProjectDashboardCharts(period);
 };
 
 const populateFilters = () => {
@@ -335,7 +377,7 @@ const filterHistoryPeriod = (period) => {
     renderHistory();
 };
 
-// --- INICIALIZAÇÃO E EVENT LISTENERS (transactions part is modified) ---
+// --- INICIALIZAÇÃO E EVENT LISTENERS ---
 document.addEventListener('DOMContentLoaded', () => {
     loadData();
     renderTotalBalance();
@@ -416,4 +458,62 @@ document.addEventListener('DOMContentLoaded', () => {
         renderHistory();
     });
 });
+
+// History rendering (pasted from previous correct version, no changes needed here)
+const renderHistory = () => {
+    const list = document.getElementById('history-list');
+    list.innerHTML = '';
+    
+    let allTransactions = [];
+    projects.forEach(p => {
+        p.transactions.forEach(t => {
+            allTransactions.push({ ...t, projectName: p.name });
+        });
+    });
+
+    const now = new Date();
+    let startDate;
+    if (historyFilters.period === 'week') {
+        const firstDayOfWeek = new Date(now.setDate(now.getDate() - now.getDay()));
+        firstDayOfWeek.setHours(0, 0, 0, 0);
+        startDate = firstDayOfWeek;
+    } else if (historyFilters.period === 'month') {
+        startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+    } else { // year
+        startDate = new Date(now.getFullYear(), 0, 1);
+    }
+    
+    let filteredTransactions = allTransactions.filter(t => new Date(t.date) >= startDate);
+    
+    if (historyFilters.sector !== 'all') {
+        filteredTransactions = filteredTransactions.filter(t => t.sector === historyFilters.sector);
+    }
+    
+    if (historyFilters.subsector !== 'all') {
+        filteredTransactions = filteredTransactions.filter(t => t.subSector === historyFilters.subsector);
+    }
+
+    filteredTransactions.sort((a, b) => new Date(b.date) - new Date(a.date));
+
+    if (filteredTransactions.length === 0) {
+        list.innerHTML = `<p class="text-gray-500 text-center col-span-full">Nenhuma operação encontrada.</p>`;
+        return;
+    }
+
+    filteredTransactions.forEach(t => {
+        const item = document.createElement('div');
+        const isRevenue = t.type === 'revenue';
+        item.className = `history-item ${isRevenue ? 'history-item-revenue' : 'history-item-cost'}`;
+        
+        item.innerHTML = `
+            <div class="flex-grow pr-4">
+                <p class="font-bold text-gray-800">${t.description}</p>
+                <p class="text-sm text-gray-500">${t.projectName} - ${new Date(t.date).toLocaleDateString('pt-BR')}</p>
+                <p class="text-xs text-gray-400">${t.sector} / ${t.subSector}</p>
+            </div>
+            <p class="font-bold text-lg whitespace-nowrap ${isRevenue ? 'text-green-600' : 'text-red-600'}">${isRevenue ? '+' : '-'} ${formatCurrency(t.amount)}</p>
+        `;
+        list.appendChild(item);
+    });
+};
 
