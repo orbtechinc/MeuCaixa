@@ -65,7 +65,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // --- RENDER FUNCTIONS (Atualizam a UI) ---
+    // --- RENDER FUNCTIONS ---
     function updateTotalBalance() {
         const totalInitialBalance = investments.reduce((sum, inv) => sum + inv.initial_balance, 0);
 
@@ -262,6 +262,31 @@ document.addEventListener('DOMContentLoaded', () => {
         });
         lucide.createIcons();
     }
+    
+    function updateSectorTotals(projectId) {
+        const project = projects.find(p => p.id == projectId);
+        if (!project) return;
+
+        const sectorIdMap = {
+            'Financeiro': 'finance',
+            'Operacional': 'operational',
+            'Comercial': 'commercial'
+        };
+
+        Object.keys(sectorIdMap).forEach(sectorName => {
+            const sectorTransactions = project.transactions.filter(t => t.sector === sectorName);
+            const revenue = sectorTransactions.filter(t => t.type === 'revenue').reduce((s, t) => s + t.amount, 0);
+            const cost = sectorTransactions.filter(t => t.type === 'cost').reduce((s, t) => s + t.amount, 0);
+            const result = revenue - cost;
+            const sectorId = sectorIdMap[sectorName];
+
+            document.getElementById(`${sectorId}-revenue`).textContent = `+ ${revenue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}`;
+            document.getElementById(`${sectorId}-cost`).textContent = `- ${cost.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}`;
+            const resultEl = document.getElementById(`${sectorId}-result`);
+            resultEl.textContent = result.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+            resultEl.className = `font-bold ${result >= 0 ? 'text-green-400' : 'text-red-400'}`;
+        });
+    }
 
 
     // --- PAGE NAVIGATION & LOGIC ---
@@ -282,25 +307,7 @@ document.addEventListener('DOMContentLoaded', () => {
         
         document.getElementById('sectors-project-name').textContent = project.name;
         
-        const sectorIdMap = {
-            'Financeiro': 'finance',
-            'Operacional': 'operational',
-            'Comercial': 'commercial'
-        };
-
-        Object.keys(sectorIdMap).forEach(sectorName => {
-            const sectorTransactions = project.transactions.filter(t => t.sector === sectorName);
-            const revenue = sectorTransactions.filter(t => t.type === 'revenue').reduce((s, t) => s + t.amount, 0);
-            const cost = sectorTransactions.filter(t => t.type === 'cost').reduce((s, t) => s + t.amount, 0);
-            const result = revenue - cost;
-
-            const sectorId = sectorIdMap[sectorName];
-            document.getElementById(`${sectorId}-revenue`).textContent = `+ ${revenue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}`;
-            document.getElementById(`${sectorId}-cost`).textContent = `- ${cost.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}`;
-            const resultEl = document.getElementById(`${sectorId}-result`);
-            resultEl.textContent = result.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-            resultEl.className = `font-bold ${result >= 0 ? 'text-green-400' : 'text-red-400'}`;
-        });
+        updateSectorTotals(projectId);
         
         homePage.classList.add('hidden');
         historyPage.classList.add('hidden');
@@ -534,10 +541,10 @@ document.addEventListener('DOMContentLoaded', () => {
         
         updateTotalBalance();
         renderInvestments();
+        updateSectorTotals(activeProjectId);
 
         operationForm.reset();
         hideModal(operationModal);
-        openHistoryPage(activeProjectId);
     });
 
 
@@ -652,7 +659,7 @@ document.addEventListener('DOMContentLoaded', () => {
     sectorsCarousel.addEventListener('touchmove', (e) => {
         if (!isSectorDragging) return;
         const currentPosition = e.touches[0].clientX;
-        currentSectorTranslate = prevSectorTranslate + currentPosition - startSectorPos;
+        currentSectorTranslate = prevSectorTranslate + currentPosition - startPos;
         sectorsCarousel.style.transform = `translateX(${currentSectorTranslate}px)`;
     });
     sectorsCarousel.addEventListener('touchend', (e) => {
@@ -675,8 +682,16 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // --- CHART LOGIC ---
-    let efficiencyChart = null; // for the main project comparison chart
     let subSectorCharts = []; // for the individual sub-sector charts
+    let projectCharts = [];
+
+    const pieTooltipCallback = function(context) {
+        const label = context.label || '';
+        const value = context.raw;
+        const total = context.chart.getDatasetMeta(0).total;
+        const percentage = total > 0 ? ((value / total) * 100).toFixed(2) + '%' : '0%';
+        return `${label}: ${value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })} (${percentage})`;
+    };
 
     function getPeriodConfig(filter) {
         const now = new Date();
@@ -714,12 +729,10 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function destroyCharts() {
-        if (efficiencyChart) {
-            efficiencyChart.destroy();
-            efficiencyChart = null;
-        }
         subSectorCharts.forEach(chart => chart.destroy());
         subSectorCharts = [];
+        projectCharts.forEach(chart => chart.destroy());
+        projectCharts = [];
     }
 
     function renderActiveChart() {
@@ -776,22 +789,24 @@ document.addEventListener('DOMContentLoaded', () => {
                 revenueChartWrapper.className = 'bg-gray-800 p-4 rounded-xl';
                 revenueChartWrapper.innerHTML = `<h3 class="text-lg font-semibold text-center mb-2">Receitas</h3><canvas id="revenue-pie-chart"></canvas>`;
                 subsectorChartsContainer.appendChild(revenueChartWrapper);
-                new Chart(document.getElementById('revenue-pie-chart'), {
+                const revChart = new Chart(document.getElementById('revenue-pie-chart'), {
                     type: 'pie',
                     data: { labels: revenueData.labels, datasets: [{ data: revenueData.data, backgroundColor: pieColors }] },
-                    options: { responsive: true, plugins: { legend: { position: 'bottom', labels: { color: '#d1d5db' } } } }
+                    options: { responsive: true, plugins: { legend: { position: 'bottom', labels: { color: '#d1d5db' } }, tooltip: { callbacks: { label: pieTooltipCallback } } } }
                 });
+                subSectorCharts.push(revChart);
             }
             if (costData.data.length > 0) {
                 const costChartWrapper = document.createElement('div');
                 costChartWrapper.className = 'bg-gray-800 p-4 rounded-xl';
                 costChartWrapper.innerHTML = `<h3 class="text-lg font-semibold text-center mb-2">Custos</h3><canvas id="cost-pie-chart"></canvas>`;
                 subsectorChartsContainer.appendChild(costChartWrapper);
-                new Chart(document.getElementById('cost-pie-chart'), {
+                const costChart = new Chart(document.getElementById('cost-pie-chart'), {
                     type: 'pie',
                     data: { labels: costData.labels, datasets: [{ data: costData.data, backgroundColor: pieColors }] },
-                    options: { responsive: true, plugins: { legend: { position: 'bottom', labels: { color: '#d1d5db' } } } }
+                    options: { responsive: true, plugins: { legend: { position: 'bottom', labels: { color: '#d1d5db' } }, tooltip: { callbacks: { label: pieTooltipCallback } } } }
                 });
+                subSectorCharts.push(costChart);
             }
             if (revenueData.data.length === 0 && costData.data.length === 0) {
                  subsectorChartsContainer.innerHTML = `<p class="text-center text-gray-500 pt-16 col-span-full">Nenhuma operação para exibir nos gráficos.</p>`;
@@ -866,60 +881,128 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function renderProjectsChart() {
-        const ctx = document.getElementById('efficiency-chart').getContext('2d');
         const periodConfig = getPeriodConfig(activeFilter);
-        
+        projectChartContainer.innerHTML = ''; // Clear container
+
         if (activeFilter === 'pizza') {
-            const projectResults = projects.map(p => {
+            projectChartContainer.className = 'grid grid-cols-1 md:grid-cols-2 gap-4';
+            
+            const revenueData = { labels: [], data: [] };
+            const costData = { labels: [], data: [] };
+
+             projects.forEach(p => {
                 const relevantTransactions = p.transactions.filter(t => new Date(t.date) >= periodConfig.startDate);
                 const revenue = relevantTransactions.filter(t => t.type === 'revenue').reduce((s, t) => s + t.amount, 0);
+                if (revenue > 0) {
+                    revenueData.labels.push(p.name);
+                    revenueData.data.push(revenue);
+                }
                 const cost = relevantTransactions.filter(t => t.type === 'cost').reduce((s, t) => s + t.amount, 0);
-                return { name: p.name, result: revenue - cost };
-            }).filter(p => p.result > 0); // Only positive results for a pie chart
-
-            efficiencyChart = new Chart(ctx, {
-                type: 'pie',
-                data: {
-                    labels: projectResults.map(p => p.name),
-                    datasets: [{
-                        data: projectResults.map(p => p.result),
-                        backgroundColor: ['#818cf8', '#60a5fa', '#34d399', '#a78bfa', '#f87171', '#fb923c', '#facc15', '#4ade80', '#2dd4bf']
-                    }]
-                },
-                options: {
-                    responsive: true, maintainAspectRatio: false,
-                    plugins: { legend: { position: 'bottom', labels: { color: '#d1d5db' } } }
+                if (cost > 0) {
+                    costData.labels.push(p.name);
+                    costData.data.push(cost);
                 }
             });
+
+            const pieColors = ['#818cf8', '#60a5fa', '#34d399', '#a78bfa', '#f87171', '#fb923c', '#facc15', '#4ade80', '#2dd4bf'];
+
+            if (revenueData.data.length > 0) {
+                const revenueChartWrapper = document.createElement('div');
+                revenueChartWrapper.className = 'bg-gray-800 p-4 rounded-xl';
+                revenueChartWrapper.innerHTML = `<h3 class="text-lg font-semibold text-center mb-2">Receitas por Projeto</h3><canvas id="project-revenue-pie-chart"></canvas>`;
+                projectChartContainer.appendChild(revenueChartWrapper);
+                const revChart = new Chart(document.getElementById('project-revenue-pie-chart'), {
+                    type: 'pie',
+                    data: { labels: revenueData.labels, datasets: [{ data: revenueData.data, backgroundColor: pieColors }] },
+                    options: { responsive: true, plugins: { legend: { position: 'bottom', labels: { color: '#d1d5db' } }, tooltip: { callbacks: { label: pieTooltipCallback } } } }
+                });
+                projectCharts.push(revChart);
+            }
+             if (costData.data.length > 0) {
+                const costChartWrapper = document.createElement('div');
+                costChartWrapper.className = 'bg-gray-800 p-4 rounded-xl';
+                costChartWrapper.innerHTML = `<h3 class="text-lg font-semibold text-center mb-2">Custos por Projeto</h3><canvas id="project-cost-pie-chart"></canvas>`;
+                projectChartContainer.appendChild(costChartWrapper);
+                const costChart = new Chart(document.getElementById('project-cost-pie-chart'), {
+                    type: 'pie',
+                    data: { labels: costData.labels, datasets: [{ data: costData.data, backgroundColor: pieColors }] },
+                    options: { responsive: true, plugins: { legend: { position: 'bottom', labels: { color: '#d1d5db' } }, tooltip: { callbacks: { label: pieTooltipCallback } } } }
+                });
+                projectCharts.push(costChart);
+            }
+
+            if (revenueData.data.length === 0 && costData.data.length === 0) {
+                 projectChartContainer.innerHTML = `<p class="text-center text-gray-500 pt-16 col-span-full">Nenhuma operação para exibir nos gráficos.</p>`;
+            }
+
         } else {
-            const projectNames = projects.map(p => p.name);
-            const projectResults = projects.map(p => {
-                const relevantTransactions = p.transactions.filter(t => new Date(t.date) >= periodConfig.startDate);
-                const revenue = relevantTransactions.filter(t => t.type === 'revenue').reduce((s, t) => s + t.amount, 0);
-                const cost = relevantTransactions.filter(t => t.type === 'cost').reduce((s, t) => s + t.amount, 0);
-                return revenue - cost;
-            });
+            projectChartContainer.className = 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4'; // Set grid layout
+            const chartLabels = periodConfig.labels;
+            const now = new Date();
 
-            efficiencyChart = new Chart(ctx, {
-                type: 'bar',
-                data: {
-                    labels: projectNames,
-                    datasets: [{
-                        label: 'Resultado (R$)',
-                        data: projectResults,
-                        backgroundColor: projectResults.map(r => r >= 0 ? 'rgba(74, 222, 128, 0.6)' : 'rgba(248, 113, 113, 0.6)'),
-                        borderColor: projectResults.map(r => r >= 0 ? 'rgb(74, 222, 128)' : 'rgb(248, 113, 113)'),
-                        borderWidth: 1
-                    }]
-                },
-                options: {
-                    responsive: true, maintainAspectRatio: false,
-                    scales: {
-                        y: { beginAtZero: true, ticks: { color: '#9CA3AF' }, grid: { color: 'rgba(255, 255, 255, 0.1)' } },
-                        x: { ticks: { color: '#9CA3AF' }, grid: { display: false } }
+            if (projects.length === 0) {
+                projectChartContainer.innerHTML = `<p class="text-center text-gray-500 pt-16 col-span-full">Nenhum projeto para exibir nos gráficos.</p>`;
+                return;
+            }
+
+            projects.forEach((project, index) => {
+                const chartId = `project-chart-${index}`;
+                const chartWrapper = document.createElement('div');
+                chartWrapper.className = 'bg-gray-800 p-2 rounded-xl flex flex-col';
+                chartWrapper.innerHTML = `
+                    <h3 class="text-xs sm:text-sm font-semibold text-center text-gray-300 truncate">${project.name}</h3>
+                    <div class="flex-grow h-40">
+                        <canvas id="${chartId}"></canvas>
+                    </div>
+                `;
+                projectChartContainer.appendChild(chartWrapper);
+                
+                const ctx = document.getElementById(chartId).getContext('2d');
+                const relevantTransactions = project.transactions.filter(t => {
+                    const transactionDate = new Date(t.date);
+                    transactionDate.setMinutes(transactionDate.getMinutes() + transactionDate.getTimezoneOffset());
+                    return transactionDate >= periodConfig.startDate;
+                });
+                
+                const chartData = Array(chartLabels.length).fill(0);
+                
+                relevantTransactions.forEach(t => {
+                    const transactionDate = new Date(t.date);
+                    transactionDate.setMinutes(transactionDate.getMinutes() + transactionDate.getTimezoneOffset());
+                    const value = t.type === 'revenue' ? t.amount : -t.amount;
+                    
+                    let idx = -1;
+                    switch (activeFilter) {
+                        case 'semana':
+                            idx = Math.floor((transactionDate - periodConfig.startDate) / (1000 * 60 * 60 * 24));
+                            break;
+                        case 'mes':
+                            if (transactionDate.getFullYear() === now.getFullYear() && transactionDate.getMonth() === now.getMonth()) idx = transactionDate.getDate() - 1;
+                            break;
+                        case 'anual':
+                        default:
+                            idx = (transactionDate.getFullYear() - periodConfig.startDate.getFullYear()) * 12 + (transactionDate.getMonth() - periodConfig.startDate.getMonth());
+                            break;
+                    }
+                    if (idx >= 0 && idx < chartData.length) chartData[idx] += value;
+                });
+
+                const newChart = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: chartLabels,
+                        datasets: [{ label: 'Resultado', data: chartData, borderColor: 'rgb(74, 222, 128)', tension: 0.2, pointRadius: 1, pointBackgroundColor: 'rgb(74, 222, 128)' }]
                     },
-                    plugins: { legend: { display: false } }
-                }
+                    options: {
+                        responsive: true, maintainAspectRatio: false,
+                        scales: {
+                            y: { ticks: { display: true, color: '#9CA3AF', font: { size: 10 }, callback: (v) => (v/1000)+'k' }, grid: { color: 'rgba(255, 255, 255, 0.05)' } },
+                            x: { ticks: { display: true, color: '#9CA3AF', font: { size: 10 }, autoSkip: true, maxRotation: 45 }, grid: { display: false } }
+                        },
+                        plugins: { legend: { display: false }, tooltip: { callbacks: { label: (c) => `R$ ${c.raw.toFixed(2)}` } } }
+                    }
+                });
+                projectCharts.push(newChart);
             });
         }
         document.querySelector('#results-page h1').textContent = 'Dashboard de Resultados';
