@@ -41,5 +41,21 @@ input[type="date"]::-webkit-calendar-picker-indicator {
 }
 
 .sub-sector-card {
-    @apply bg-gray-700/50 p-4 rounded-xl flex items-center space-x-4 cursor-pointer hover:bg-gray-600/50 transition-colors;
+    background-color: rgb(55 65 81 / 0.5);
+    padding: 1rem;
+    border-radius: 0.75rem;
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+    transition-property: color, background-color, border-color, text-decoration-color, fill, stroke;
+    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+    transition-duration: 150ms;
+}
+
+.sub-sector-card > :not([hidden]) ~ :not([hidden]) {
+    margin-left: 1rem;
+}
+
+.sub-sector-card:hover {
+    background-color: rgb(75 85 99 / 0.5);
 }
