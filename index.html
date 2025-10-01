@@ -89,30 +89,42 @@
                     </div>
                 </div>
             </div>
-             <!-- Subsector Charts Container -->
-            <div id="subsector-charts-container" class="mt-8 space-y-6">
-                <!-- Subsector charts will be injected here -->
-            </div>
         </div>
 
-        <!-- Dashboard/Results Page View -->
-        <div id="dashboard-view" class="hidden p-6">
+        <!-- Dashboard/Results Page View (For Projects) -->
+        <div id="project-dashboard-view" class="hidden p-6">
              <div class="flex items-center mb-4 relative">
                  <button onclick="switchView('home-view')" class="absolute left-0 p-2 text-indigo-600">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
                     </svg>
                  </button>
-                 <h1 class="text-2xl font-bold w-full text-center">Resultados</h1>
+                 <h1 class="text-2xl font-bold w-full text-center">Resultados dos Projetos</h1>
              </div>
              <div class="flex justify-center gap-2 mb-4">
                  <button onclick="filterDashboardCharts('week')" data-period="week" class="dashboard-filter-btn period-btn bg-indigo-600 text-white px-4 py-2 rounded-full text-sm font-semibold">Semana</button>
                  <button onclick="filterDashboardCharts('month')" data-period="month" class="dashboard-filter-btn period-btn bg-white text-gray-700 px-4 py-2 rounded-full text-sm font-semibold">Mês</button>
                  <button onclick="filterDashboardCharts('year')" data-period="year" class="dashboard-filter-btn period-btn bg-white text-gray-700 px-4 py-2 rounded-full text-sm font-semibold">Ano</button>
              </div>
-             <!-- Charts Container -->
-             <div id="charts-container" class="space-y-6">
-                <!-- Pie charts and bar charts will be injected here -->
+             <!-- Charts Container for projects -->
+             <div id="project-charts-container" class="space-y-6">
+                <!-- Pie charts and bar charts for projects will be injected here -->
+             </div>
+        </div>
+        
+        <!-- Dashboard/Results Page View (For Sectors) -->
+        <div id="sector-dashboard-view" class="hidden p-6">
+             <div class="flex items-center mb-4 relative">
+                 <button onclick="switchView('sectors-view', currentProjectId)" class="absolute left-0 p-2 text-indigo-600">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+                    </svg>
+                 </button>
+                 <h1 class="text-2xl font-bold w-full text-center">Resultados dos Setores</h1>
+             </div>
+             <!-- Charts Container for subsectors -->
+             <div id="sector-charts-container" class="space-y-6">
+                <!-- Bar charts for subsectors will be injected here -->
              </div>
         </div>
 
@@ -163,7 +175,7 @@
             <span class="text-xs">Histórico</span>
         </button>
 
-        <button onclick="switchView('dashboard-view')" class="nav-btn-dash flex flex-col items-center text-gray-500 hover:text-indigo-600">
+        <button onclick="showResults()" class="nav-btn-dash flex flex-col items-center text-gray-500 hover:text-indigo-600">
             <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>
             <span class="text-xs">Resultados</span>
         </button>
