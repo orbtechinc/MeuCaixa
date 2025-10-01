@@ -4,63 +4,54 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Gestor de Projetos</title>
+    
     <script src="https://cdn.tailwindcss.com"></script>
+    
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/lucide/0.292.0/lucide.min.css" xintegrity="sha512-Vva8wL2UeNggVQTU57psNcL2ssR2l3i7I3xNmrLBCvIY3B6jdLz1w27bXWRaLg2ZpG77r3wgrfD3iGvhtdG3Ng==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    
     <script src="https://unpkg.com/lucide@latest"></script>
-    <link rel="stylesheet" href="style.css">
+    
+    <link rel="stylesheet" href="styles.css">
 </head>
 <body class="bg-gray-900 text-white antialiased flex flex-col h-screen">
 
-    <!-- Painel Superior de Saldo -->
     <header class="p-4 bg-gray-800 text-center z-20 flex-shrink-0">
         <h2 class="text-sm font-semibold text-gray-400">SALDO TOTAL</h2>
         <p id="total-balance" class="text-2xl sm:text-3xl font-bold text-green-400">R$ 0,00</p>
     </header>
 
     <main id="page-container" class="flex-grow overflow-y-auto">
-        <!-- =========== TELA PRINCIPAL (HOME) =========== -->
         <div id="home-page" class="flex flex-col h-full">
             
-            <!-- Carrossel de Projetos -->
             <div class="flex-grow flex flex-col items-center justify-start overflow-hidden w-full">
-                <!-- Container do Carrossel -->
                 <div id="project-carousel-container" class="w-full flex-grow relative overflow-hidden">
                     <div id="project-carousel" class="flex items-center w-full h-full">
-                        <!-- Cards de projeto serão inseridos aqui via JS -->
-                    </div>
+                        </div>
                 </div>
                 <div id="carousel-dots" class="flex space-x-2 py-4">
-                    <!-- Bolinhas de navegação do carrossel -->
-                </div>
+                    </div>
             </div>
 
-            <!-- Seção de Fontes de Investimento -->
             <div class="px-4 pb-4 w-full flex-shrink-0">
                 <h3 class="text-base font-semibold text-gray-300 mb-2">Fontes de Investimento</h3>
                 <div id="investment-list" class="max-h-36 overflow-y-auto space-y-2 rounded-lg">
-                    <!-- Lista de fontes será inserida aqui via JS -->
-                </div>
+                    </div>
             </div>
         </div>
 
-        <!-- =========== TELA DE SETORES =========== -->
         <div id="sectors-page" class="hidden h-full flex-col bg-gray-900">
             <header class="flex items-center justify-between p-4 flex-shrink-0">
                 <button id="back-to-home-from-sectors-btn" class="p-2 rounded-full hover:bg-gray-700">
                     <i data-lucide="arrow-left" class="w-6 h-6"></i>
                 </button>
                 <h1 id="sectors-project-name" class="text-xl font-bold text-center truncate">Nome do Projeto</h1>
-                <div class="w-10"></div> <!-- placeholder for alignment -->
-            </header>
+                <div class="w-10"></div> </header>
             
             <main class="flex-grow flex flex-col items-center justify-center overflow-hidden w-full">
                 <div id="sectors-carousel-container" class="w-full flex-grow relative overflow-hidden">
                     <div id="sectors-carousel" class="flex items-center w-full h-full">
                         
-                        <!-- Slide Financeiro -->
                         <div class="w-full flex-shrink-0 h-full flex items-center justify-center">
-                            <!-- Card Financeiro -->
                             <div class="w-[80%] h-[90%] bg-gradient-to-br from-gray-700 to-gray-800 p-4 sm:p-6 rounded-2xl flex flex-col">
                                 <h2 class="text-xl sm:text-2xl font-bold mb-4 sm:mb-6 text-indigo-400">Financeiro</h2>
                                 <div class="flex flex-col space-y-3">
@@ -82,9 +73,7 @@
                             </div>
                         </div>
 
-                        <!-- Slide Operacional -->
                         <div class="w-full flex-shrink-0 h-full flex items-center justify-center">
-                            <!-- Card Operacional -->
                             <div class="w-[80%] h-[90%] bg-gradient-to-br from-gray-700 to-gray-800 p-4 sm:p-6 rounded-2xl h-full flex flex-col">
                                 <h2 class="text-xl sm:text-2xl font-bold mb-4 sm:mb-6 text-teal-400">Operacional</h2>
                                 <div class="flex flex-col space-y-3">
@@ -106,9 +95,7 @@
                             </div>
                         </div>
 
-                        <!-- Slide Comercial -->
                         <div class="w-full flex-shrink-0 h-full flex items-center justify-center">
-                            <!-- Card Comercial -->
                             <div class="w-[80%] h-[90%] bg-gradient-to-br from-gray-700 to-gray-800 p-4 sm:p-6 rounded-2xl h-full flex flex-col">
                                 <h2 class="text-xl sm:text-2xl font-bold mb-4 sm:mb-6 text-amber-400">Comercial</h2>
                                 <div class="flex flex-col space-y-3">
@@ -132,94 +119,88 @@
                     </div>
                 </div>
                 <div id="sectors-carousel-dots" class="flex space-x-2 py-4">
-                    <!-- Dots will be generated by JS -->
-                </div>
+                    </div>
             </main>
         </div>
 
-        <!-- =========== TELA DE HISTÓRICO DE OPERAÇÕES =========== -->
         <div id="history-page" class="hidden flex-col bg-gray-900">
-            <header class="flex items-center justify-between p-4">
-                <button id="back-to-sectors-btn" class="p-2 rounded-full hover:bg-gray-700">
-                    <i data-lucide="arrow-left" class="w-6 h-6"></i>
-                </button>
-                <h1 id="history-project-name" class="text-xl font-bold text-center truncate">Histórico de Operações</h1>
-                <div class="w-10"></div> <!-- placeholder for alignment -->
-            </header>
+             <div class="sticky top-0 bg-gray-900 z-10">
+                <header class="flex items-center justify-between p-4">
+                    <button id="back-to-sectors-btn" class="p-2 rounded-full hover:bg-gray-700">
+                        <i data-lucide="arrow-left" class="w-6 h-6"></i>
+                    </button>
+                    <h1 id="history-project-name" class="text-xl font-bold text-center truncate">Histórico de Operações</h1>
+                    <div class="w-10"></div> </header>
 
-            <!-- Filtros do Histórico -->
-            <div class="px-4 pb-2 space-y-2">
-                <div class="flex justify-around space-x-2">
-                    <button data-period="semana" class="history-period-btn bg-gray-700 hover:bg-gray-600 text-white py-1 px-3 rounded-lg text-xs w-full">Semana</button>
-                    <button data-period="mes" class="history-period-btn bg-gray-700 hover:bg-gray-600 text-white py-1 px-3 rounded-lg text-xs w-full">Mês</button>
-                    <button data-period="anual" class="history-period-btn bg-gray-700 hover:bg-gray-600 text-white py-1 px-3 rounded-lg text-xs w-full">Anual</button>
-                    <button data-period="todos" class="history-period-btn bg-indigo-600 text-white py-1 px-3 rounded-lg text-xs w-full">Todos</button>
-                </div>
-                <div class="grid grid-cols-2 gap-2">
-                    <select id="history-sector-filter" class="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                        <option value="todos">Todos Setores</option>
-                        <option value="Financeiro">Financeiro</option>
-                        <option value="Operacional">Operacional</option>
-                        <option value="Comercial">Comercial</option>
-                    </select>
-                    <select id="history-subsector-filter" class="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                        <option value="todos">Todos Subsetores</option>
-                        <optgroup label="Financeiro">
-                            <option value="Planejamento">Planejamento</option>
-                            <option value="Captação">Captação</option>
-                            <option value="Recursos">Recursos</option>
-                        </optgroup>
-                        <optgroup label="Operacional">
-                            <option value="Treinamento">Treinamento</option>
-                            <option value="Armazenamento">Armazenamento</option>
-                            <option value="Produção">Produção</option>
-                        </optgroup>
-                        <optgroup label="Comercial">
-                            <option value="Marketing">Marketing</option>
-                            <option value="Relacionamento">Relacionamento</option>
-                            <option value="Resultados">Resultados</option>
-                        </optgroup>
-                    </select>
+                <div class="px-4 pb-2 space-y-2">
+                    <div class="flex justify-around space-x-2">
+                        <button data-period="semana" class="history-period-btn bg-gray-700 hover:bg-gray-600 text-white py-1 px-3 rounded-lg text-xs w-full">Semana</button>
+                        <button data-period="mes" class="history-period-btn bg-gray-700 hover:bg-gray-600 text-white py-1 px-3 rounded-lg text-xs w-full">Mês</button>
+                        <button data-period="anual" class="history-period-btn bg-gray-700 hover:bg-gray-600 text-white py-1 px-3 rounded-lg text-xs w-full">Anual</button>
+                        <button data-period="todos" class="history-period-btn bg-indigo-600 text-white py-1 px-3 rounded-lg text-xs w-full">Todos</button>
+                    </div>
+                    <div class="grid grid-cols-2 gap-2">
+                        <select id="history-sector-filter" class="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                            <option value="todos">Todos Setores</option>
+                            <option value="Financeiro">Financeiro</option>
+                            <option value="Operacional">Operacional</option>
+                            <option value="Comercial">Comercial</option>
+                        </select>
+                        <select id="history-subsector-filter" class="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                            <option value="todos">Todos Subsetores</option>
+                            <optgroup label="Financeiro">
+                                <option value="Planejamento">Planejamento</option>
+                                <option value="Captação">Captação</option>
+                                <option value="Recursos">Recursos</option>
+                            </optgroup>
+                            <optgroup label="Operacional">
+                                <option value="Treinamento">Treinamento</option>
+                                <option value="Armazenamento">Armazenamento</option>
+                                <option value="Produção">Produção</option>
+                            </optgroup>
+                            <optgroup label="Comercial">
+                                <option value="Marketing">Marketing</option>
+                                <option value="Relacionamento">Relacionamento</option>
+                                <option value="Resultados">Resultados</option>
+                            </optgroup>
+                        </select>
+                    </div>
                 </div>
             </div>
             
             <main class="px-4 pb-4 space-y-3">
                 <div id="operation-list">
-                    <!-- Lista de operações será inserida aqui via JS -->
-                </div>
+                    </div>
             </main>
         </div>
 
-        <!-- =========== TELA DE RESULTADOS (DASHBOARD) =========== -->
-        <div id="results-page" class="hidden flex-col p-2 sm:p-4 bg-gray-900">
-            <header class="flex items-center justify-between mb-4">
-                <button id="back-to-home-btn" class="p-2 rounded-full hover:bg-gray-700">
-                    <i data-lucide="arrow-left" class="w-6 h-6"></i>
-                </button>
-                <h1 class="text-xl font-bold text-center">Dashboard de Resultados</h1>
-                <div class="w-10"></div> <!-- Placeholder -->
-            </header>
-            
-            <div class="flex justify-center space-x-2 mb-4 flex-wrap">
-                <button data-filter="semana" class="filter-btn bg-gray-700 hover:bg-gray-600 text-white py-2 px-3 sm:px-4 rounded-lg text-sm">Semana</button>
-                <button data-filter="mes" class="filter-btn bg-gray-700 hover:bg-gray-600 text-white py-2 px-3 sm:px-4 rounded-lg text-sm">Mês</button>
-                <button data-filter="anual" class="filter-btn bg-indigo-600 text-white py-2 px-3 sm:px-4 rounded-lg text-sm">Anual</button>
-                <button data-filter="pizza" class="filter-btn bg-gray-700 hover:bg-gray-600 text-white py-2 px-3 sm:px-4 rounded-lg text-sm">Pizza</button>
+        <div id="results-page" class="hidden flex-col bg-gray-900">
+            <div class="sticky top-0 bg-gray-900 z-10 p-2 sm:p-4">
+                <header class="flex items-center justify-between mb-4">
+                    <button id="back-to-home-btn" class="p-2 rounded-full hover:bg-gray-700">
+                        <i data-lucide="arrow-left" class="w-6 h-6"></i>
+                    </button>
+                    <h1 class="text-xl font-bold text-center">Dashboard de Resultados</h1>
+                    <div class="w-10"></div> </header>
+                
+                <div class="flex justify-center space-x-2 mb-4 flex-wrap">
+                    <button data-filter="semana" class="filter-btn bg-gray-700 hover:bg-gray-600 text-white py-2 px-3 sm:px-4 rounded-lg text-sm">Semana</button>
+                    <button data-filter="mes" class="filter-btn bg-gray-700 hover:bg-gray-600 text-white py-2 px-3 sm:px-4 rounded-lg text-sm">Mês</button>
+                    <button data-filter="anual" class="filter-btn bg-indigo-600 text-white py-2 px-3 sm:px-4 rounded-lg text-sm">Anual</button>
+                    <button data-filter="pizza" class="filter-btn bg-gray-700 hover:bg-gray-600 text-white py-2 px-3 sm:px-4 rounded-lg text-sm">Pizza</button>
+                </div>
             </div>
 
-            <!-- Container for the single project comparison chart -->
-            <div id="project-chart-container" class="bg-gray-800 p-2 sm:p-4 rounded-xl">
-                <canvas id="efficiency-chart"></canvas>
-            </div>
+            <div class="p-2 sm:p-4">
+                <div id="project-chart-container" class="p-2 sm:p-4">
+                    </div>
 
-            <!-- Container for the list of sub-sector charts -->
-            <main id="subsector-charts-container" class="hidden p-2 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                <!-- Sub-sector charts will be dynamically inserted here -->
-            </main>
+                <main id="subsector-charts-container" class="hidden p-2 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                    </main>
+            </div>
         </div>
     </main>
 
-    <!-- Barra de Navegação Inferior -->
     <nav id="bottom-nav" class="bg-gray-800 p-2 shadow-lg w-full flex-shrink-0">
         <div class="flex justify-around">
             <button id="add-investment-btn" class="flex flex-col items-center text-gray-300 hover:text-white transition-colors">
@@ -241,7 +222,6 @@
         </div>
     </nav>
 
-    <!-- =========== MODAL: ADICIONAR FONTE DE INVESTIMENTO =========== -->
     <div id="investment-modal" class="modal fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center p-4 invisible opacity-0">
         <div class="modal-content bg-gray-800 w-full max-w-md rounded-xl p-4 sm:p-6 shadow-2xl transform scale-95">
             <h2 class="text-lg font-bold mb-4">Nova Fonte de Investimento</h2>
@@ -271,7 +251,6 @@
         </div>
     </div>
 
-    <!-- =========== MODAL: ADICIONAR PROJETO =========== -->
     <div id="project-modal" class="modal fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center p-4 invisible opacity-0">
         <div class="modal-content bg-gray-800 w-full max-w-md rounded-xl p-4 sm:p-6 shadow-2xl transform scale-95">
             <h2 class="text-lg font-bold mb-4">Novo Projeto</h2>
@@ -288,7 +267,6 @@
         </div>
     </div>
     
-    <!-- =========== MODAL: ADICIONAR OPERAÇÃO (NOVO) =========== -->
     <div id="operation-modal" class="modal fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center p-4 invisible opacity-0">
         <div class="modal-content bg-gray-800 w-full max-w-md rounded-xl p-4 sm:p-6 shadow-2xl transform scale-95 flex flex-col">
             <h2 class="text-lg font-bold mb-1">Nova Operação</h2>
@@ -319,8 +297,7 @@
                 <div class="mb-4">
                     <label for="operation-source" class="block text-sm font-medium text-gray-300 mb-1">Fonte de Investimento</label>
                     <select id="operation-source" class="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500" required>
-                        <!-- Options preenchidas via JS -->
-                    </select>
+                        </select>
                 </div>
 
                 <div class="mb-6">
@@ -335,7 +312,7 @@
             </form>
         </div>
     </div>
-
+    
     <script src="script.js"></script>
 </body>
 </html>
