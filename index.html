@@ -4,13 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Gestor de Projetos</title>
-    
     <script src="https://cdn.tailwindcss.com"></script>
-    
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    
     <script src="https://unpkg.com/lucide@latest"></script>
-    
     <link rel="stylesheet" href="styles.css">
 </head>
 <body class="bg-gray-900 text-white antialiased flex flex-col h-screen">
@@ -20,15 +16,15 @@
         <p id="total-balance" class="text-2xl sm:text-3xl font-bold text-green-400">R$ 0,00</p>
     </header>
 
-    <main id="page-container" class="flex-grow overflow-y-auto">
-        <div id="home-page" class="flex flex-col h-full">
+    <main id="page-container" class="flex-grow relative overflow-hidden">
+        <div id="home-page" class="absolute inset-0 flex flex-col h-full">
             
             <div class="flex-grow flex flex-col items-center justify-start overflow-hidden w-full">
                 <div id="project-carousel-container" class="w-full flex-grow relative overflow-hidden">
                     <div id="project-carousel" class="flex items-center w-full h-full">
                         </div>
                 </div>
-                <div id="carousel-dots" class="flex space-x-2 py-4">
+                <div id="carousel-dots" class="flex space-x-2 py-4 justify-center">
                     </div>
             </div>
 
@@ -39,7 +35,7 @@
             </div>
         </div>
 
-        <div id="sectors-page" class="hidden h-full flex-col bg-gray-900">
+        <div id="sectors-page" class="absolute inset-0 hidden h-full flex-col bg-gray-900">
             <header class="flex items-center justify-between p-4 flex-shrink-0">
                 <button id="back-to-home-from-sectors-btn" class="p-2 rounded-full hover:bg-gray-700">
                     <i data-lucide="arrow-left" class="w-6 h-6"></i>
@@ -118,13 +114,13 @@
                         </div>
                     </div>
                 </div>
-                <div id="sectors-carousel-dots" class="flex space-x-2 py-4">
+                <div id="sectors-carousel-dots" class="flex space-x-2 py-4 justify-center">
                     </div>
             </main>
         </div>
 
-        <div id="history-page" class="hidden flex-col bg-gray-900">
-             <div class="sticky top-0 bg-gray-900 z-10">
+        <div id="history-page" class="absolute inset-0 hidden flex-col bg-gray-900">
+             <div class="sticky top-0 bg-gray-900 z-10 flex-shrink-0">
                 <header class="flex items-center justify-between p-4">
                     <button id="back-to-sectors-btn" class="p-2 rounded-full hover:bg-gray-700">
                         <i data-lucide="arrow-left" class="w-6 h-6"></i>
@@ -168,14 +164,14 @@
                 </div>
             </div>
             
-            <main class="px-4 pb-4 space-y-3">
+            <main class="flex-grow px-4 pb-4 space-y-3 overflow-y-auto">
                 <div id="operation-list">
                     </div>
             </main>
         </div>
 
-        <div id="results-page" class="hidden flex-col bg-gray-900">
-            <div class="sticky top-0 bg-gray-900 z-10 p-2 sm:p-4">
+        <div id="results-page" class="absolute inset-0 hidden flex-col bg-gray-900">
+            <div class="sticky top-0 bg-gray-900 z-10 p-2 sm:p-4 flex-shrink-0">
                 <header class="flex items-center justify-between mb-4">
                     <button id="back-to-home-btn" class="p-2 rounded-full hover:bg-gray-700">
                         <i data-lucide="arrow-left" class="w-6 h-6"></i>
@@ -191,7 +187,7 @@
                 </div>
             </div>
 
-            <div class="p-2 sm:p-4">
+            <div class="flex-grow p-2 sm:p-4 overflow-y-auto">
                 <div id="project-chart-container" class="p-2 sm:p-4">
                     </div>
 
@@ -312,7 +308,7 @@
             </form>
         </div>
     </div>
-    
-    <script src="script.js"></script>
+
+    <script src="script.js" defer></script>
 </body>
 </html>
