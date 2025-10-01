@@ -3,7 +3,6 @@ let sources = [];
 let projects = [];
 let chartInstance = null;
 let currentProjectId = null;
-let transactionTypeSelectListener = null; // To manage event listeners
 
 // --- FUNÇÕES UTILITÁRIAS ---
 const formatCurrency = (value) => {
@@ -75,7 +74,6 @@ const renderInvestmentSources = () => {
 };
 
 const renderChart = (period = 'week') => {
-    // Chart rendering logic remains the same
     const ctx = document.getElementById('resultsChart').getContext('2d');
     const now = new Date();
     let startDate;
@@ -122,6 +120,9 @@ const closeModal = (modalId) => document.getElementById(modalId).classList.add('
 const openTransactionModal = (sector, subSector) => {
     const project = projects.find(p => p.id === currentProjectId);
     if (!project) return;
+    
+    // Reseta o formulário ao abrir
+    document.getElementById('transaction-form').reset();
 
     document.getElementById('transaction-project-name').textContent = `${project.name} / ${sector} / ${subSector}`;
     document.getElementById('transaction-sector').value = sector;
@@ -130,39 +131,28 @@ const openTransactionModal = (sector, subSector) => {
     
     const captacaoFields = document.getElementById('captacao-fields');
     const transactionSourceWrapper = document.getElementById('transaction-source-wrapper');
-    const transactionTypeSelect = document.getElementById('transaction-type');
+    const descriptionInput = document.getElementById('transaction-description');
     
-    if (transactionTypeSelectListener) {
-        transactionTypeSelect.removeEventListener('change', transactionTypeSelectListener);
-    }
-
+    // Lógica simplificada para mostrar/esconder campos de Captação
     if (sector === 'Financeiro' && subSector === 'Captação') {
         captacaoFields.classList.remove('hidden');
-        
-        transactionTypeSelectListener = () => {
-            if (transactionTypeSelect.value === 'revenue') {
-                transactionSourceWrapper.classList.add('hidden');
-            } else {
-                transactionSourceWrapper.classList.remove('hidden');
-            }
-        };
-        transactionTypeSelect.addEventListener('change', transactionTypeSelectListener);
-        transactionTypeSelectListener(); // Initial check
+        descriptionInput.placeholder = "Ex: Investidor Anjo, Empréstimo BMG";
     } else {
         captacaoFields.classList.add('hidden');
-        transactionSourceWrapper.classList.remove('hidden');
+        descriptionInput.placeholder = "Ex: Venda de licença";
     }
+    
+    // Garante que a seleção de fonte de recurso esteja sempre visível
+    transactionSourceWrapper.classList.remove('hidden');
 
+    // Popula o dropdown de fontes de recurso
     const sourceSelect = document.getElementById('transaction-source');
     sourceSelect.innerHTML = '';
-    const relevantSources = (sector === 'Financeiro' && subSector === 'Captação')
-        ? sources.filter(s => ['Investidor', 'Empréstimo', 'Crédito'].includes(s.type))
-        : sources;
     
-    if (relevantSources.length === 0) {
-        sourceSelect.innerHTML = '<option disabled>Nenhuma fonte aplicável</option>';
+    if (sources.length === 0) {
+        sourceSelect.innerHTML = '<option value="" disabled selected>Nenhuma fonte criada</option>';
     } else {
-        relevantSources.forEach(source => {
+        sources.forEach(source => {
             const option = document.createElement('option');
             option.value = source.id;
             option.textContent = `${source.name} (${source.type})`;
@@ -236,36 +226,29 @@ document.addEventListener('DOMContentLoaded', () => {
         const description = document.getElementById('transaction-description').value;
         const date = document.getElementById('transaction-date').value;
         const project = projects.find(p => p.id === currentProjectId);
-        if (!project) return;
+        const sourceId = document.getElementById('transaction-source').value;
+        const source = sources.find(s => s.id === sourceId);
 
-        let sourceId;
-
-        if (sector === 'Financeiro' && subSector === 'Captação' && type === 'revenue') {
-            const newSource = {
-                id: `src_${Date.now()}`,
-                name: description,
-                type: document.getElementById('captacao-source-type').value,
-                balance: amount
-            };
-            sources.push(newSource);
-            sourceId = newSource.id;
-        } else {
-            sourceId = document.getElementById('transaction-source').value;
-            const source = sources.find(s => s.id === sourceId);
-            if (!source) {
-                console.error('Fonte de investimento não selecionada ou inválida.');
-                return;
-            }
-            source.balance += (type === 'revenue' ? amount : -amount);
+        if (!project || !source) {
+            console.error('Projeto ou Fonte de Recurso inválida.');
+            // Futuramente, mostrar um alerta amigável para o usuário aqui
+            return;
         }
 
-        project.transactions.push({ type, description, amount, sector, subSector, sourceId, date });
+        // Lógica unificada: sempre atualiza o saldo da fonte selecionada
+        source.balance += (type === 'revenue' ? amount : -amount);
+        
+        // Adiciona a transação ao projeto
+        const newTransaction = { type, description, amount, sector, subSector, sourceId, date };
+        if (sector === 'Financeiro' && subSector === 'Captação') {
+            newTransaction.captacaoType = document.getElementById('captacao-source-type').value;
+        }
+        project.transactions.push(newTransaction);
         
         saveData();
         renderProjects();
         renderTotalBalance();
         renderInvestmentSources();
         closeModal('transaction-modal');
-        e.target.reset();
     });
 });
