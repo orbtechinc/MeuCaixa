@@ -269,4 +269,3 @@ document.addEventListener('DOMContentLoaded', () => {
         e.target.reset();
     });
 });
-
