@@ -45,7 +45,7 @@
         }
 
         /* Styling for the investment source list */
-        .source-item {
+        .source-item, .trash-item {
             display: flex;
             justify-content: space-between;
             align-items: center;
@@ -120,9 +120,19 @@
         .sector-card-comercial {
             border-color: #22c55e; /* green-500 */
         }
+        
+        /* --- Notification Banner --- */
+        #notification-banner {
+            transition: transform 0.3s ease-in-out;
+        }
     </style>
 </head>
 <body class="bg-gray-100 text-gray-800">
+
+    <!-- Notification Banner -->
+    <div id="notification-banner" class="fixed top-5 left-1/2 -translate-x-1/2 bg-red-500 text-white px-6 py-3 rounded-lg shadow-lg z-[100] transition-transform duration-300 transform -translate-y-20">
+        <p id="notification-text"></p>
+    </div>
 
     <!-- Top Header: Total Balance (Fixed) -->
     <header class="fixed top-0 left-0 right-0 bg-white p-4 shadow-md z-10">
@@ -164,7 +174,7 @@
             <p class="text-center text-gray-500 mb-6">Selecione uma ação ou subsetor.</p>
             <div class="flex overflow-x-auto gap-4 snap-x pb-4 md:grid md:grid-cols-3 md:overflow-visible">
                 <!-- Sector Cards with Subsectors -->
-                <div class="sector-card sector-card-financeiro flex-shrink-0 w-full max-w-xs md:max-w-none mx-auto bg-white rounded-xl shadow-lg flex flex-col p-4 snap-center">
+                <div class="sector-card sector-card-financeiro flex-shrink-0 w-full max-w-[16rem] mx-auto bg-white rounded-xl shadow-lg flex flex-col p-4 snap-center">
                     <div class="flex items-center mb-4">
                         <h3 class="text-xl font-bold">Financeiro</h3>
                     </div>
@@ -178,7 +188,7 @@
                     </div>
                 </div>
 
-                <div class="sector-card sector-card-operacional flex-shrink-0 w-full max-w-xs md:max-w-none mx-auto bg-white rounded-xl shadow-lg flex flex-col p-4 snap-center">
+                <div class="sector-card sector-card-operacional flex-shrink-0 w-full max-w-[16rem] mx-auto bg-white rounded-xl shadow-lg flex flex-col p-4 snap-center">
                      <div class="flex items-center mb-4">
                         <h3 class="text-xl font-bold">Operacional</h3>
                     </div>
@@ -192,7 +202,7 @@
                     </div>
                 </div>
 
-                <div class="sector-card sector-card-comercial flex-shrink-0 w-full max-w-xs md:max-w-none mx-auto bg-white rounded-xl shadow-lg flex flex-col p-4 snap-center">
+                <div class="sector-card sector-card-comercial flex-shrink-0 w-full max-w-[16rem] mx-auto bg-white rounded-xl shadow-lg flex flex-col p-4 snap-center">
                     <div class="flex items-center mb-4">
                         <h3 class="text-xl font-bold">Comercial</h3>
                     </div>
@@ -285,6 +295,37 @@
                 <!-- History items will be inserted here by JS -->
             </div>
        </div>
+       
+       <!-- Trash Page View -->
+        <div id="trash-view" class="hidden p-6 max-w-7xl mx-auto">
+            <div class="flex items-center mb-4 relative">
+                <button onclick="switchView('home-view')" class="absolute left-0 p-2 text-indigo-600">
+                   <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+                   </svg>
+                </button>
+                <h1 class="text-2xl font-bold w-full text-center">Lixeira</h1>
+                 <button onclick="confirmClearTrash()" class="absolute right-0 p-2 text-red-500 hover:text-red-700" title="Esvaziar Lixeira">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
+                </button>
+            </div>
+            
+            <div id="deleted-projects-container" class="mb-8">
+                <h2 class="text-xl font-bold mb-4">Projetos Excluídos</h2>
+                <div id="deleted-projects-list" class="space-y-3">
+                    <!-- Deleted projects will be inserted here by JS -->
+                </div>
+            </div>
+            
+            <div id="deleted-sources-container">
+                <h2 class="text-xl font-bold mb-4">Fontes de Investimento Excluídas</h2>
+                <div id="deleted-sources-list" class="space-y-3">
+                     <!-- Deleted sources will be inserted here by JS -->
+                </div>
+            </div>
+       </div>
 
     </main>
 
@@ -304,6 +345,10 @@
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>
                 <span class="text-xs">Resultados</span>
             </button>
+             <button onclick="switchView('trash-view')" class="flex flex-col items-center text-gray-500 hover:text-indigo-600">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                <span class="text-xs">Lixeira</span>
+            </button>
         </div>
         <!-- Sectors Page Navigation -->
         <div id="sectors-nav" class="w-full flex justify-around items-center hidden">
@@ -318,6 +363,10 @@
             <button onclick="showResults()" class="flex flex-col items-center text-gray-500 hover:text-indigo-600">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>
                 <span class="text-xs">Resultados</span>
+            </button>
+             <button onclick="switchView('trash-view')" class="flex flex-col items-center text-gray-500 hover:text-indigo-600">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                <span class="text-xs">Lixeira</span>
             </button>
         </div>
     </footer>
@@ -490,20 +539,21 @@
 
         // --- FUNÇÕES DE RENDERIZAÇÃO PRINCIPAIS ---
         const renderTotalBalance = () => {
-            const total = sources.reduce((sum, source) => sum + parseFloat(source.balance), 0);
+            const total = sources.filter(s => !s.deleted).reduce((sum, source) => sum + parseFloat(source.balance), 0);
             document.getElementById('total-balance').textContent = formatCurrency(total);
         };
 
         const renderProjects = () => {
             const carousel = document.getElementById('project-carousel');
             carousel.innerHTML = '';
+            const activeProjects = projects.filter(p => !p.deleted);
 
-            if (projects.length === 0) {
+            if (activeProjects.length === 0) {
                 carousel.innerHTML = `<div class="project-card flex-shrink-0 w-full max-w-xs mx-auto p-6 snap-center"><div class="flex flex-col items-center justify-center text-center h-full"><svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 text-gray-300 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 13h6m-3-3v6m-9 1V7a2 2 0 012-2h6l2 2h6a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z" /></svg><h3 class="font-bold text-lg">Nenhum projeto ainda</h3><p class="text-gray-500">Clique em "Criar Projeto" para começar.</p></div></div>`;
                 return;
             }
 
-            projects.forEach(project => {
+            activeProjects.forEach(project => {
                 const totalRevenue = project.transactions.filter(t => t.type === 'revenue').reduce((sum, t) => sum + t.amount, 0);
                 const totalCost = project.transactions.filter(t => t.type === 'cost').reduce((sum, t) => sum + t.amount, 0);
                 const projectBalance = totalRevenue - totalCost;
@@ -516,9 +566,12 @@
                     borderColorClass = 'card-negative';
                 }
                 
-                card.className = `project-card ${borderColorClass} flex-shrink-0 w-full max-w-xs mx-auto snap-center cursor-pointer hover:shadow-xl transition`;
+                card.className = `project-card ${borderColorClass} flex-shrink-0 w-full max-w-xs mx-auto snap-center cursor-pointer hover:shadow-xl transition relative`;
                 card.setAttribute('onclick', `switchView('sectors-view', '${project.id}')`);
                 card.innerHTML = `
+                    <button onclick="moveItemToTrash(event, 'project', '${project.id}')" class="absolute top-2 right-2 text-gray-400 hover:text-red-500">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                    </button>
                     <h3 class="font-bold text-xl text-gray-800 mb-2">${project.name}</h3>
                     <div class="space-y-2 text-sm border-t pt-2 mt-2">
                         <div class="flex justify-between">
@@ -541,19 +594,24 @@
         const renderInvestmentSources = () => {
             const list = document.getElementById('investment-sources-list');
             list.innerHTML = '';
-            if (sources.length === 0) {
+            const activeSources = sources.filter(s => !s.deleted);
+
+            if (activeSources.length === 0) {
                 list.innerHTML = `<p class="text-gray-500 text-center">Nenhuma fonte de investimento cadastrada.</p>`;
                 return;
             }
-            sources.forEach(source => {
+            activeSources.forEach(source => {
                 const item = document.createElement('div');
                 item.className = 'source-item';
                 item.innerHTML = `
-                    <div>
+                    <div class="flex-grow">
                         <p class="font-bold text-gray-800">${source.name}</p>
                         <p class="text-sm text-gray-500">${source.type}</p>
                     </div>
-                    <p class="font-bold text-lg ${source.balance >= 0 ? 'text-green-600' : 'text-red-600'}">${formatCurrency(source.balance)}</p>
+                    <p class="font-bold text-lg ${source.balance >= 0 ? 'text-green-600' : 'text-red-600'} mr-4">${formatCurrency(source.balance)}</p>
+                    <button onclick="moveItemToTrash(null, 'source', '${source.id}')" class="text-gray-400 hover:text-red-500">
+                         <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                    </button>
                 `;
                 list.appendChild(item);
             });
@@ -614,8 +672,10 @@
             const container = document.getElementById('project-charts-container');
             container.innerHTML = '';
 
+            const activeProjects = projects.filter(p => !p.deleted);
+
             if (projectDashboardViewMode === 'pizza') {
-                const pieData = projects.reduce((acc, project) => {
+                const pieData = activeProjects.reduce((acc, project) => {
                     const revenue = project.transactions.filter(t => t.type === 'revenue' && isDateInPeriod(t.date, period)).reduce((sum, t) => sum + t.amount, 0);
                     const cost = project.transactions.filter(t => t.type === 'cost' && isDateInPeriod(t.date, period)).reduce((sum, t) => sum + t.amount, 0);
                     if (revenue > 0) { acc.revenues.data.push(revenue); acc.revenues.labels.push(project.name); }
@@ -626,7 +686,7 @@
                 if (pieData.revenues.data.length > 0) createChart(container, 'Receita por Projeto', { type: 'pie', data: { labels: pieData.revenues.labels, datasets: [{ data: pieData.revenues.data, backgroundColor: ['#4CAF50', '#8BC34A', '#CDDC39', '#FFEB3B', '#FFC107'] }] }, options: { responsive: true, maintainAspectRatio: false } });
                 if (pieData.costs.data.length > 0) createChart(container, 'Custo por Projeto', { type: 'pie', data: { labels: pieData.costs.labels, datasets: [{ data: pieData.costs.data, backgroundColor: ['#F44336', '#E91E63', '#9C27B0', '#673AB7', '#3F51B5'] }] }, options: { responsive: true, maintainAspectRatio: false } });
             } else { // 'bars'
-                projects.forEach(project => {
+                activeProjects.forEach(project => {
                     const data = aggregateDataForPeriod(project.transactions, period);
                     createChart(container, `Desempenho: ${project.name}`, { type: 'bar', data: { labels: data.labels, datasets: [ { label: 'Receita', data: data.revenues, backgroundColor: 'rgba(75, 192, 192, 0.6)' }, { label: 'Custo', data: data.costs, backgroundColor: 'rgba(255, 99, 132, 0.6)' } ] }, options: { scales: { y: { beginAtZero: true } }, responsive: true, maintainAspectRatio: false }});
                 });
@@ -715,7 +775,7 @@
             return result;
         }
 
-        // --- CONTROLE DA UI ---
+        // --- CONTROLE DA UI E MODALS ---
         const openModal = (modalId) => document.getElementById(modalId).classList.remove('hidden');
         const closeModal = (modalId) => document.getElementById(modalId).classList.add('hidden');
 
@@ -739,10 +799,10 @@
 
             const sourceSelect = document.getElementById('transaction-source');
             sourceSelect.innerHTML = '';
-            if (sources.length === 0) {
+            if (sources.filter(s => !s.deleted).length === 0) {
                 sourceSelect.innerHTML = '<option value="" disabled selected>Nenhuma fonte criada</option>';
             } else {
-                sources.forEach(source => {
+                sources.filter(s => !s.deleted).forEach(source => {
                     const option = document.createElement('option');
                     option.value = source.id;
                     option.textContent = `${source.name} (${source.type})`;
@@ -764,10 +824,10 @@
             
             const sourceSelect = document.getElementById('inv-cost-source');
             sourceSelect.innerHTML = '';
-             if (sources.length === 0) {
+             if (sources.filter(s => !s.deleted).length === 0) {
                 sourceSelect.innerHTML = '<option value="" disabled selected>Nenhuma fonte criada</option>';
             } else {
-                sources.forEach(source => {
+                sources.filter(s => !s.deleted).forEach(source => {
                     const option = document.createElement('option');
                     option.value = source.id;
                     option.textContent = `${source.name} (${source.type})`;
@@ -793,13 +853,14 @@
             }
         };
         
+        // --- NAVEGAÇÃO ---
         const switchView = (viewId, projectId = null) => {
-            if (['home-view', 'project-dashboard-view', 'history-view'].includes(viewId)) {
+            if (['home-view', 'project-dashboard-view', 'history-view', 'trash-view'].includes(viewId)) {
                 currentProjectId = null;
             }
             if (projectId) currentProjectId = projectId;
             
-            ['home-view', 'project-dashboard-view', 'sector-dashboard-view', 'sectors-view', 'history-view'].forEach(id => {
+            ['home-view', 'project-dashboard-view', 'sector-dashboard-view', 'sectors-view', 'history-view', 'trash-view'].forEach(id => {
                 const el = document.getElementById(id);
                 if (el) el.classList.add('hidden');
             });
@@ -835,6 +896,9 @@
                 populateFilters();
                 renderHistory();
             }
+            if(viewId === 'trash-view') {
+                renderTrash();
+            }
             if (viewId === 'sectors-view') {
                  const project = projects.find(p => p.id === currentProjectId);
                  if(project) {
@@ -851,6 +915,8 @@
                 switchView('project-dashboard-view');
             }
         };
+        
+        // --- FUNÇÕES DE FILTRO ---
 
         const filterDashboardCharts = (period) => {
             dashboardPeriodFilter = period;
@@ -934,18 +1000,89 @@
             subsectorSelect.value = historyFilters.subsector;
         };
         
+        // --- FUNÇÕES DE EXCLUSÃO ---
+        function moveItemToTrash(event, type, id) {
+            if(event) event.stopPropagation();
+            
+            if (type === 'project') {
+                const project = projects.find(p => p.id === id);
+                if (project) project.deleted = true;
+            } else if (type === 'source') {
+                const source = sources.find(s => s.id === id);
+                if (source) source.deleted = true;
+            }
+            saveData();
+            renderAll();
+        }
+
+        function restoreItem(type, id) {
+             if (type === 'project') {
+                const project = projects.find(p => p.id === id);
+                if (project) project.deleted = false;
+            } else if (type === 'source') {
+                const source = sources.find(s => s.id === id);
+                if (source) source.deleted = false;
+            }
+            saveData();
+            renderAll();
+            renderTrash();
+        }
+
+        function confirmDeletePermanently(type, id) {
+            const item = type === 'project' ? projects.find(p => p.id === id) : sources.find(s => s.id === id);
+            if (!item) return;
+
+            if (confirm(`EXCLUIR PERMANENTEMENTE "${item.name}"? Esta ação é irreversível.`)) {
+                deleteItemPermanently(type, id);
+            }
+        }
+        
+        function deleteItemPermanently(type, id) {
+            if (type === 'project') {
+                projects = projects.filter(p => p.id !== id);
+            } else if (type === 'source') {
+                sources = sources.filter(s => s.id !== id);
+                // Opcional: remover transações associadas se a fonte for permanentemente deletada
+                projects.forEach(project => {
+                    project.transactions = project.transactions.filter(t => t.sourceId !== id);
+                });
+            }
+            saveData();
+            renderAll();
+            renderTrash();
+        }
+
+        function confirmClearTrash() {
+            if(confirm("Tem certeza que deseja esvaziar a lixeira? Todos os itens serão excluídos permanentemente.")) {
+                clearTrash();
+            }
+        }
+        
+        function clearTrash() {
+            const deletedSourcesIds = sources.filter(s => s.deleted).map(s => s.id);
+            
+            sources = sources.filter(s => !s.deleted);
+            projects = projects.filter(p => !p.deleted);
+
+            projects.forEach(project => {
+                project.transactions = project.transactions.filter(t => !deletedSourcesIds.includes(t.sourceId));
+            });
+
+            saveData();
+            renderAll();
+            renderTrash();
+        }
+
         // --- INICIALIZAÇÃO E EVENT LISTENERS ---
         document.addEventListener('DOMContentLoaded', () => {
             loadData();
-            renderTotalBalance();
-            renderProjects();
-            renderInvestmentSources();
+            renderAll();
 
             document.getElementById('investment-action-type').addEventListener('change', updateInvestmentFormUI);
 
             document.getElementById('project-form').addEventListener('submit', (e) => {
                 e.preventDefault();
-                projects.push({ id: `proj_${Date.now()}`, name: e.target.elements['project-name'].value, transactions: [] });
+                projects.push({ id: `proj_${Date.now()}`, name: e.target.elements['project-name'].value, transactions: [], deleted: false });
                 saveData();
                 renderProjects();
                 renderSectorIndicators();
@@ -968,7 +1105,7 @@
                     const balance = parseFloat(form.elements['inv-source-balance'].value);
                     if (!name || !type || isNaN(balance)) return;
 
-                    const newSource = { id: `src_${Date.now()}`, name, type, balance };
+                    const newSource = { id: `src_${Date.now()}`, name, type, balance, deleted: false };
                     sources.push(newSource);
                     
                     project.transactions.push({
@@ -1001,10 +1138,7 @@
                 }
                 
                 saveData();
-                renderTotalBalance();
-                renderProjects();
-                renderInvestmentSources();
-                renderSectorIndicators();
+                renderAll();
                 closeModal('investment-modal');
             });
 
@@ -1036,10 +1170,7 @@
                 project.transactions.push(newTransaction);
                 
                 saveData();
-                renderTotalBalance();
-                renderProjects();
-                renderInvestmentSources();
-                renderSectorIndicators();
+                renderAll();
                 closeModal('transaction-modal');
             });
 
@@ -1065,6 +1196,69 @@
             });
         });
 
+        // Helper to render everything that needs updating
+        function renderAll() {
+            renderTotalBalance();
+            renderProjects();
+            renderInvestmentSources();
+            if (currentProjectId) {
+                renderSectorIndicators();
+            }
+        }
+        
+        // --- FUNÇÕES DA LIXEIRA ---
+        
+        const renderTrash = () => {
+            const deletedProjectsList = document.getElementById('deleted-projects-list');
+            const deletedSourcesList = document.getElementById('deleted-sources-list');
+
+            deletedProjectsList.innerHTML = '';
+            deletedSourcesList.innerHTML = '';
+
+            const deletedProjects = projects.filter(p => p.deleted);
+            const deletedSources = sources.filter(s => s.deleted);
+
+            if (deletedProjects.length === 0) {
+                deletedProjectsList.innerHTML = '<p class="text-gray-500 text-center">Nenhum projeto na lixeira.</p>';
+            } else {
+                deletedProjects.forEach(p => {
+                    const item = document.createElement('div');
+                    item.className = 'trash-item';
+                    item.innerHTML = `
+                        <div class="flex-grow">
+                            <p class="font-bold text-gray-800">${p.name}</p>
+                        </div>
+                        <div class="flex gap-2">
+                            <button onclick="restoreItem('project', '${p.id}')" class="text-blue-500 hover:text-blue-700">Restaurar</button>
+                            <button onclick="confirmDeletePermanently('project', '${p.id}')" class="text-red-500 hover:text-red-700">Excluir</button>
+                        </div>
+                    `;
+                    deletedProjectsList.appendChild(item);
+                });
+            }
+
+            if (deletedSources.length === 0) {
+                deletedSourcesList.innerHTML = '<p class="text-gray-500 text-center">Nenhuma fonte na lixeira.</p>';
+            } else {
+                deletedSources.forEach(s => {
+                     const item = document.createElement('div');
+                    item.className = 'trash-item';
+                    item.innerHTML = `
+                         <div class="flex-grow">
+                            <p class="font-bold text-gray-800">${s.name}</p>
+                            <p class="text-sm text-gray-500">${s.type}</p>
+                        </div>
+                        <div class="flex gap-2">
+                            <button onclick="restoreItem('source', '${s.id}')" class="text-blue-500 hover:text-blue-700">Restaurar</button>
+                            <button onclick="confirmDeletePermanently('source', '${s.id}')" class="text-red-500 hover:text-red-700">Excluir</button>
+                        </div>
+                    `;
+                    deletedSourcesList.appendChild(item);
+                });
+            }
+        };
+
+
         // History rendering
         const renderHistory = () => {
             const list = document.getElementById('history-list');
@@ -1072,7 +1266,7 @@
             list.innerHTML = '';
             
             let allTransactions = [];
-            projects.forEach(p => {
+            projects.filter(p => !p.deleted).forEach(p => {
                 p.transactions.forEach(t => {
                     allTransactions.push({ ...t, projectName: p.name });
                 });
