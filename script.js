@@ -3,12 +3,13 @@ let sources = [];
 let projects = [];
 let activeCharts = []; // Para rastrear e destruir gráficos antigos
 let currentProjectId = null;
-let transactionTypeSelectListener = null;
 let historyFilters = { period: 'week', sector: 'all', subsector: 'all' };
 let dashboardPeriodFilter = 'week';
+let projectDashboardViewMode = 'bars';
+let sectorDashboardViewMode = 'bars';
 const subsectorsBySector = {
     'all': ['Todos os Subsetores'],
-    'Financeiro': ['Todos', 'Planejamento', 'Captação', 'Recursos'],
+    'Financeiro': ['Todos', 'Investimento', 'Planejamento', 'Recursos'],
     'Operacional': ['Todos', 'Treinamento', 'Armazenamento', 'Produção'],
     'Comercial': ['Todos', 'Marketing', 'Relacionamento', 'Vendas']
 };
@@ -47,16 +48,41 @@ const renderProjects = () => {
     carousel.innerHTML = '';
 
     if (projects.length === 0) {
-        carousel.innerHTML = `<div class="flex-shrink-0 w-full max-w-xs mx-auto bg-white rounded-xl shadow-lg flex flex-col items-center justify-center text-center p-6 snap-center aspect-[1080/1220]"><svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 text-gray-300 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 13h6m-3-3v6m-9 1V7a2 2 0 012-2h6l2 2h6a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z" /></svg><h3 class="font-bold text-lg">Nenhum projeto ainda</h3><p class="text-gray-500">Clique em "Criar Projeto" para começar.</p></div>`;
+        carousel.innerHTML = `<div class="project-card flex-shrink-0 w-full max-w-xs mx-auto p-6 snap-center"><div class="flex flex-col items-center justify-center text-center h-full"><svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 text-gray-300 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 13h6m-3-3v6m-9 1V7a2 2 0 012-2h6l2 2h6a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z" /></svg><h3 class="font-bold text-lg">Nenhum projeto ainda</h3><p class="text-gray-500">Clique em "Criar Projeto" para começar.</p></div></div>`;
         return;
     }
 
     projects.forEach(project => {
-        const projectBalance = project.transactions.reduce((bal, t) => bal + (t.type === 'revenue' ? t.amount : -t.amount), 0);
+        const totalRevenue = project.transactions.filter(t => t.type === 'revenue').reduce((sum, t) => sum + t.amount, 0);
+        const totalCost = project.transactions.filter(t => t.type === 'cost').reduce((sum, t) => sum + t.amount, 0);
+        const projectBalance = totalRevenue - totalCost;
+
         const card = document.createElement('div');
-        card.className = "flex-shrink-0 w-full max-w-xs mx-auto bg-white rounded-xl shadow-lg flex flex-col p-6 snap-center cursor-pointer hover:shadow-xl transition aspect-[1080/1220]";
+        let borderColorClass = 'card-neutral';
+        if (projectBalance > 0) {
+            borderColorClass = 'card-positive';
+        } else if (projectBalance < 0) {
+            borderColorClass = 'card-negative';
+        }
+        
+        card.className = `project-card ${borderColorClass} flex-shrink-0 w-full max-w-xs mx-auto snap-center cursor-pointer hover:shadow-xl transition`;
         card.setAttribute('onclick', `switchView('sectors-view', '${project.id}')`);
-        card.innerHTML = `<div class="flex-grow flex flex-col justify-center"><h3 class="font-bold text-2xl text-gray-800">${project.name}</h3><p class="text-sm text-gray-400 mt-2">Balanço do Projeto</p><p class="text-4xl font-bold ${projectBalance >= 0 ? 'text-green-500' : 'text-red-500'} mt-2">${formatCurrency(projectBalance)}</p></div><div class="text-xs text-center text-indigo-500 font-semibold mt-4">CLIQUE PARA VER SETORES</div>`;
+        card.innerHTML = `
+            <h3 class="font-bold text-xl text-gray-800 mb-2">${project.name}</h3>
+            <div class="space-y-2 text-sm border-t pt-2 mt-2">
+                <div class="flex justify-between">
+                    <span class="text-gray-500">Receita</span>
+                    <span class="font-semibold text-green-500">${formatCurrency(totalRevenue)}</span>
+                </div>
+                <div class="flex justify-between">
+                    <span class="text-gray-500">Custo</span>
+                    <span class="font-semibold text-red-500">${formatCurrency(totalCost)}</span>
+                </div>
+                <div class="flex justify-between border-t pt-2 mt-2">
+                    <span class="font-bold text-gray-700">Resultado</span>
+                    <span class="font-bold ${projectBalance >= 0 ? 'text-green-500' : 'text-red-500'}">${formatCurrency(projectBalance)}</span>
+                </div>
+            </div>`;
         carousel.appendChild(card);
     });
 };
@@ -65,7 +91,7 @@ const renderInvestmentSources = () => {
     const list = document.getElementById('investment-sources-list');
     list.innerHTML = '';
     if (sources.length === 0) {
-        list.innerHTML = `<p class="text-gray-500 text-center">Nenhuma fonte de recurso cadastrada.</p>`;
+        list.innerHTML = `<p class="text-gray-500 text-center">Nenhuma fonte de investimento cadastrada.</p>`;
         return;
     }
     sources.forEach(source => {
@@ -82,6 +108,38 @@ const renderInvestmentSources = () => {
     });
 };
 
+const renderSectorIndicators = () => {
+    const project = projects.find(p => p.id === currentProjectId);
+    if (!project) return;
+
+    ['Financeiro', 'Operacional', 'Comercial'].forEach(sector => {
+        const sectorTransactions = project.transactions.filter(t => t.sector === sector);
+        const totalRevenue = sectorTransactions.filter(t => t.type === 'revenue').reduce((sum, t) => sum + t.amount, 0);
+        const totalCost = sectorTransactions.filter(t => t.type === 'cost').reduce((sum, t) => sum + t.amount, 0);
+        const result = totalRevenue - totalCost;
+        
+        const indicatorDiv = document.getElementById(`${sector.toLowerCase()}-indicators`);
+
+        if (indicatorDiv) {
+            indicatorDiv.innerHTML = `
+                <div class="flex justify-between">
+                    <span class="text-gray-500">Receita</span>
+                    <span class="font-semibold text-green-500">${formatCurrency(totalRevenue)}</span>
+                </div>
+                <div class="flex justify-between">
+                    <span class="text-gray-500">Custo</span>
+                    <span class="font-semibold text-red-500">${formatCurrency(totalCost)}</span>
+                </div>
+                 <div class="flex justify-between border-t mt-2 pt-2">
+                    <span class="text-gray-700 font-bold">Resultado</span>
+                    <span class="font-bold ${result >= 0 ? 'text-green-600' : 'text-red-600'}">${formatCurrency(result)}</span>
+                </div>
+            `;
+        }
+    });
+};
+
+
 // --- FUNÇÕES DE GRÁFICOS ---
 
 const destroyActiveCharts = () => {
@@ -89,115 +147,85 @@ const destroyActiveCharts = () => {
     activeCharts = [];
 };
 
+function createChart(container, title, chartConfig) {
+    const card = document.createElement('div');
+    card.className = 'chart-card';
+    card.innerHTML = `<h2>${title}</h2><canvas></canvas>`;
+    container.appendChild(card);
+    const canvas = card.querySelector('canvas');
+    if (canvas) {
+        activeCharts.push(new Chart(canvas.getContext('2d'), chartConfig));
+    }
+}
+
 function renderProjectDashboardCharts(period = 'week') {
     destroyActiveCharts();
     const container = document.getElementById('project-charts-container');
     container.innerHTML = '';
 
-    const transactionsInPeriod = projects.flatMap(p => p.transactions).filter(t => isDateInPeriod(t.date, period));
-    
-    // Render Pie Charts
-    const pieData = projects.reduce((acc, project) => {
-        const revenue = project.transactions.filter(t => t.type === 'revenue' && isDateInPeriod(t.date, period)).reduce((sum, t) => sum + t.amount, 0);
-        const cost = project.transactions.filter(t => t.type === 'cost' && isDateInPeriod(t.date, period)).reduce((sum, t) => sum + t.amount, 0);
-        if (revenue > 0) {
-            acc.revenues.data.push(revenue);
-            acc.revenues.labels.push(project.name);
-        }
-        if (cost > 0) {
-            acc.costs.data.push(cost);
-            acc.costs.labels.push(project.name);
-        }
-        return acc;
-    }, { revenues: { labels: [], data: [] }, costs: { labels: [], data: [] } });
+    if (projectDashboardViewMode === 'pizza') {
+        const pieData = projects.reduce((acc, project) => {
+            const revenue = project.transactions.filter(t => t.type === 'revenue' && isDateInPeriod(t.date, period)).reduce((sum, t) => sum + t.amount, 0);
+            const cost = project.transactions.filter(t => t.type === 'cost' && isDateInPeriod(t.date, period)).reduce((sum, t) => sum + t.amount, 0);
+            if (revenue > 0) { acc.revenues.data.push(revenue); acc.revenues.labels.push(project.name); }
+            if (cost > 0) { acc.costs.data.push(cost); acc.costs.labels.push(project.name); }
+            return acc;
+        }, { revenues: { labels: [], data: [] }, costs: { labels: [], data: [] } });
 
-    if (pieData.revenues.data.length > 0) {
-        container.innerHTML += `<div class="chart-card"><h2>Receita por Projeto</h2><canvas id="revenuePieChart"></canvas></div>`;
-        const revenueCtx = document.getElementById('revenuePieChart').getContext('2d');
-        activeCharts.push(new Chart(revenueCtx, { type: 'pie', data: { labels: pieData.revenues.labels, datasets: [{ data: pieData.revenues.data, backgroundColor: ['#4CAF50', '#8BC34A', '#CDDC39', '#FFEB3B', '#FFC107'] }] }, options: { responsive: true, maintainAspectRatio: false } }));
+        if (pieData.revenues.data.length > 0) createChart(container, 'Receita por Projeto', { type: 'pie', data: { labels: pieData.revenues.labels, datasets: [{ data: pieData.revenues.data, backgroundColor: ['#4CAF50', '#8BC34A', '#CDDC39', '#FFEB3B', '#FFC107'] }] }, options: { responsive: true, maintainAspectRatio: false } });
+        if (pieData.costs.data.length > 0) createChart(container, 'Custo por Projeto', { type: 'pie', data: { labels: pieData.costs.labels, datasets: [{ data: pieData.costs.data, backgroundColor: ['#F44336', '#E91E63', '#9C27B0', '#673AB7', '#3F51B5'] }] }, options: { responsive: true, maintainAspectRatio: false } });
+    } else { // 'bars'
+        projects.forEach(project => {
+            const data = aggregateDataForPeriod(project.transactions, period);
+            createChart(container, `Desempenho: ${project.name}`, { type: 'bar', data: { labels: data.labels, datasets: [ { label: 'Receita', data: data.revenues, backgroundColor: 'rgba(75, 192, 192, 0.6)' }, { label: 'Custo', data: data.costs, backgroundColor: 'rgba(255, 99, 132, 0.6)' } ] }, options: { scales: { y: { beginAtZero: true } }, responsive: true, maintainAspectRatio: false }});
+        });
     }
-     if (pieData.costs.data.length > 0) {
-        container.innerHTML += `<div class="chart-card"><h2>Custo por Projeto</h2><canvas id="costPieChart"></canvas></div>`;
-        const costCtx = document.getElementById('costPieChart').getContext('2d');
-        activeCharts.push(new Chart(costCtx, { type: 'pie', data: { labels: pieData.costs.labels, datasets: [{ data: pieData.costs.data, backgroundColor: ['#F44336', '#E91E63', '#9C27B0', '#673AB7', '#3F51B5'] }] }, options: { responsive: true, maintainAspectRatio: false } }));
-    }
-
-    // Render Bar Charts per Project
-    projects.forEach(project => {
-        if (project.transactions.filter(t => isDateInPeriod(t.date, period)).length === 0) return;
-
-        const chartId = `projectChart_${project.id}`;
-        container.innerHTML += `<div class="chart-card"><h2>Desempenho: ${project.name}</h2><canvas id="${chartId}"></canvas></div>`;
-        const ctx = document.getElementById(chartId).getContext('2d');
-        
-        const data = aggregateDataForPeriod(project.transactions, period);
-
-        activeCharts.push(new Chart(ctx, {
-            type: 'bar',
-            data: {
-                labels: data.labels,
-                datasets: [
-                    { label: 'Receita', data: data.revenues, backgroundColor: 'rgba(75, 192, 192, 0.6)' },
-                    { label: 'Custo', data: data.costs, backgroundColor: 'rgba(255, 99, 132, 0.6)' }
-                ]
-            },
-            options: { scales: { y: { beginAtZero: true } }, responsive: true, maintainAspectRatio: false }
-        }));
-    });
 }
 
-function renderSectorDashboardCharts() {
+function renderSectorDashboardCharts(period = 'week') {
     destroyActiveCharts();
     const container = document.getElementById('sector-charts-container');
     container.innerHTML = '';
     const project = projects.find(p => p.id === currentProjectId);
     if (!project) return;
 
-    const allSubsectors = [...subsectorsBySector.Financeiro, ...subsectorsBySector.Operacional, ...subsectorsBySector.Comercial].filter(s => s !== 'Todos');
+    const allSubsectors = ['Investimento', 'Planejamento', 'Recursos', 'Treinamento', 'Armazenamento', 'Produção', 'Marketing', 'Relacionamento', 'Vendas'];
 
-    allSubsectors.forEach(subsector => {
-        const transactions = project.transactions.filter(t => t.subSector === subsector);
-        if (transactions.length === 0) return;
+     if (sectorDashboardViewMode === 'pizza') {
+        const pieData = allSubsectors.reduce((acc, subsector) => {
+            const revenue = project.transactions.filter(t => t.subSector === subsector && t.type === 'revenue' && isDateInPeriod(t.date, period)).reduce((sum, t) => sum + t.amount, 0);
+            const cost = project.transactions.filter(t => t.subSector === subsector && t.type === 'cost' && isDateInPeriod(t.date, period)).reduce((sum, t) => sum + t.amount, 0);
+            if (revenue > 0) { acc.revenues.data.push(revenue); acc.revenues.labels.push(subsector); }
+            if (cost > 0) { acc.costs.data.push(cost); acc.costs.labels.push(subsector); }
+            return acc;
+        }, { revenues: { labels: [], data: [] }, costs: { labels: [], data: [] } });
 
-        const data = {
-            revenue: transactions.filter(t => t.type === 'revenue').reduce((s, t) => s + t.amount, 0),
-            cost: transactions.filter(t => t.type === 'cost').reduce((s, t) => s + t.amount, 0)
-        };
+        if (pieData.revenues.data.length > 0) createChart(container, 'Receita por Subsetor', { type: 'pie', data: { labels: pieData.revenues.labels, datasets: [{ data: pieData.revenues.data, backgroundColor: ['#4CAF50', '#8BC34A', '#CDDC39', '#FFEB3B', '#FFC107', '#FF9800', '#795548', '#607D8B', '#009688'] }] }, options: { responsive: true, maintainAspectRatio: false } });
+        if (pieData.costs.data.length > 0) createChart(container, 'Custo por Subsetor', { type: 'pie', data: { labels: pieData.costs.labels, datasets: [{ data: pieData.costs.data, backgroundColor: ['#F44336', '#E91E63', '#9C27B0', '#673AB7', '#3F51B5', '#2196F3', '#03A9F4', '#00BCD4', '#f43f5e'] }] }, options: { responsive: true, maintainAspectRatio: false } });
 
-        const chartId = `subsectorChart_${subsector.replace(/\s+/g, '')}`;
-        container.innerHTML += `<div class="chart-card"><h3>Desempenho: ${subsector}</h3><canvas id="${chartId}"></canvas></div>`;
-        const ctx = document.getElementById(chartId).getContext('2d');
-        
-        activeCharts.push(new Chart(ctx, {
-            type: 'bar',
-            data: {
-                labels: ['Receita', 'Custo'],
-                datasets: [{
-                    label: subsector,
-                    data: [data.revenue, data.cost],
-                    backgroundColor: ['rgba(75, 192, 192, 0.6)', 'rgba(255, 99, 132, 0.6)']
-                }]
-            },
-            options: { scales: { y: { beginAtZero: true } }, responsive: true, maintainAspectRatio: false }
-        }));
-    });
+    } else { // 'bars'
+        allSubsectors.forEach(subsector => {
+            const transactions = project.transactions.filter(t => t.subSector === subsector && isDateInPeriod(t.date, period));
+            const data = aggregateDataForPeriod(transactions, period);
+            createChart(container, `Desempenho: ${subsector}`, { type: 'bar', data: { labels: data.labels, datasets: [{ label: 'Receita', data: data.revenues, backgroundColor: 'rgba(75, 192, 192, 0.6)' }, { label: 'Custo', data: data.costs, backgroundColor: 'rgba(255, 99, 132, 0.6)' }] }, options: { scales: { y: { beginAtZero: true } }, responsive: true, maintainAspectRatio: false }});
+        });
+    }
 }
 
 function isDateInPeriod(dateString, period) {
     const date = new Date(dateString);
     const now = new Date();
+    let startDate = new Date();
+
     if (period === 'week') {
-        const startOfWeek = new Date(now.setDate(now.getDate() - now.getDay()));
-        startOfWeek.setHours(0,0,0,0);
-        return date >= startOfWeek;
+        startDate.setDate(now.getDate() - now.getDay());
+        startDate.setHours(0,0,0,0);
+    } else if (period === 'month') {
+        startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+    } else { // year
+        startDate = new Date(now.getFullYear(), 0, 1);
     }
-    if (period === 'month') {
-        return date.getMonth() === now.getMonth() && date.getFullYear() === now.getFullYear();
-    }
-    if (period === 'year') {
-        return date.getFullYear() === now.getFullYear();
-    }
-    return false;
+    return date >= startDate;
 }
 
 function aggregateDataForPeriod(transactions, period) {
@@ -236,44 +264,28 @@ function aggregateDataForPeriod(transactions, period) {
     return result;
 }
 
-
 // --- CONTROLE DA UI ---
 const openModal = (modalId) => document.getElementById(modalId).classList.remove('hidden');
 const closeModal = (modalId) => document.getElementById(modalId).classList.add('hidden');
+
+function closeModalOnOutsideClick(event) {
+    if (event.target.id.endsWith('-modal')) {
+        closeModal(event.target.id);
+    }
+}
 
 const openTransactionModal = (sector, subSector) => {
     const project = projects.find(p => p.id === currentProjectId);
     if (!project) return;
     
-    document.getElementById('transaction-form').reset();
-    document.getElementById('transaction-project-name').textContent = `${project.name} / ${sector} / ${subSector}`;
-    document.getElementById('transaction-sector').value = sector;
-    document.getElementById('transaction-subsector').value = subSector;
-    document.getElementById('transaction-date').valueAsDate = new Date();
-    
-    const captacaoFields = document.getElementById('captacao-fields');
-    const transactionSourceWrapper = document.getElementById('transaction-source-wrapper');
-    const descriptionInput = document.getElementById('transaction-description');
-    const transactionTypeSelect = document.getElementById('transaction-type');
+    const form = document.getElementById('transaction-form');
+    form.reset();
 
-    if (transactionTypeSelectListener) {
-        transactionTypeSelect.removeEventListener('change', transactionTypeSelectListener);
-    }
-    
-    if (sector === 'Financeiro' && subSector === 'Captação') {
-        captacaoFields.classList.remove('hidden');
-        descriptionInput.placeholder = "Ex: Investidor Anjo, Empréstimo BMG";
-        transactionTypeSelectListener = () => {
-            transactionSourceWrapper.classList.toggle('hidden', transactionTypeSelect.value === 'revenue');
-        };
-        transactionTypeSelect.addEventListener('change', transactionTypeSelectListener);
-        transactionTypeSelectListener();
-    } else {
-        captacaoFields.classList.add('hidden');
-        descriptionInput.placeholder = "Ex: Venda de licença";
-        transactionSourceWrapper.classList.remove('hidden');
-    }
-    
+    document.getElementById('transaction-project-name').textContent = `${project.name} / ${sector} / ${subSector}`;
+    form.elements['transaction-sector'].value = sector;
+    form.elements['transaction-subsector'].value = subSector;
+    form.elements['transaction-date'].valueAsDate = new Date();
+
     const sourceSelect = document.getElementById('transaction-source');
     sourceSelect.innerHTML = '';
     if (sources.length === 0) {
@@ -286,46 +298,104 @@ const openTransactionModal = (sector, subSector) => {
             sourceSelect.appendChild(option);
         });
     }
+    
     openModal('transaction-modal');
 };
 
+const openInvestmentModal = () => {
+     const project = projects.find(p => p.id === currentProjectId);
+    if (!project) {
+        alert("Por favor, selecione um projeto na tela inicial antes de realizar uma ação de investimento.");
+        return;
+    }
+    document.getElementById('investment-form').reset();
+    document.getElementById('investment-project-name').textContent = `${project.name} / Financeiro / Investimento`;
+    
+    const sourceSelect = document.getElementById('inv-cost-source');
+    sourceSelect.innerHTML = '';
+     if (sources.length === 0) {
+        sourceSelect.innerHTML = '<option value="" disabled selected>Nenhuma fonte criada</option>';
+    } else {
+        sources.forEach(source => {
+            const option = document.createElement('option');
+            option.value = source.id;
+            option.textContent = `${source.name} (${source.type})`;
+            sourceSelect.appendChild(option);
+        });
+    }
+    document.getElementById('inv-cost-date').valueAsDate = new Date();
+    updateInvestmentFormUI(); // Set initial state
+    openModal('investment-modal');
+}
+
+const updateInvestmentFormUI = () => {
+    const actionType = document.getElementById('investment-action-type').value;
+    const sourceFields = document.getElementById('investment-source-fields');
+    const costFields = document.getElementById('investment-cost-fields');
+
+    if (actionType === 'source') {
+        sourceFields.classList.remove('hidden');
+        costFields.classList.add('hidden');
+    } else { // cost
+        sourceFields.classList.add('hidden');
+        costFields.classList.remove('hidden');
+    }
+};
+
 const switchView = (viewId, projectId = null) => {
-    // projectId is only null when coming from a non-project context
-    if (viewId === 'home-view' || viewId === 'project-dashboard-view' || viewId === 'history-view') {
+    if (['home-view', 'project-dashboard-view', 'history-view'].includes(viewId)) {
         currentProjectId = null;
     }
     if (projectId) currentProjectId = projectId;
     
-    ['home-view', 'project-dashboard-view', 'sector-dashboard-view', 'sectors-view', 'history-view'].forEach(id => document.getElementById(id)?.classList.add('hidden'));
-    document.getElementById(viewId).classList.remove('hidden');
-
-    const createProjectBtn = document.getElementById('create-project-btn');
-    const historyBtn = document.getElementById('history-btn');
-
-    if (viewId === 'sectors-view') {
-        createProjectBtn.classList.add('hidden');
-        historyBtn.classList.remove('hidden');
+    ['home-view', 'project-dashboard-view', 'sector-dashboard-view', 'sectors-view', 'history-view'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.classList.add('hidden');
+    });
+    const viewToShow = document.getElementById(viewId);
+    if(viewToShow) {
+        viewToShow.classList.remove('hidden');
     } else {
-        createProjectBtn.classList.remove('hidden');
-        historyBtn.classList.add('hidden');
+        console.error(`A view com o ID "${viewId}" não foi encontrada.`);
+        switchView('home-view'); // Fallback to home view
+        return; 
     }
 
-    destroyActiveCharts(); // Clear charts when switching views
+    const footer = document.getElementById('footer-nav');
+    const homeNav = document.getElementById('home-nav');
+    const sectorsNav = document.getElementById('sectors-nav');
+
+    if (viewId === 'home-view') {
+        footer.classList.remove('hidden');
+        homeNav.classList.remove('hidden');
+        sectorsNav.classList.add('hidden');
+    } else if (viewId === 'sectors-view') {
+        footer.classList.remove('hidden');
+        homeNav.classList.add('hidden');
+        sectorsNav.classList.remove('hidden');
+    } else {
+        footer.classList.add('hidden');
+    }
+
+    destroyActiveCharts();
     if (viewId === 'project-dashboard-view') renderProjectDashboardCharts(dashboardPeriodFilter);
-    if (viewId === 'sector-dashboard-view') renderSectorDashboardCharts();
+    if (viewId === 'sector-dashboard-view') renderSectorDashboardCharts(dashboardPeriodFilter);
     if (viewId === 'history-view') {
         populateFilters();
         renderHistory();
     }
     if (viewId === 'sectors-view') {
          const project = projects.find(p => p.id === currentProjectId);
-         if(project) document.getElementById('sectors-project-name').textContent = project.name;
+         if(project) {
+            document.getElementById('sectors-project-name').textContent = project.name;
+            renderSectorIndicators();
+         }
     }
 };
 
 const showResults = () => {
     if (currentProjectId) {
-        switchView('sector-dashboard-view', currentProjectId);
+        switchView('sector-dashboard-view');
     } else {
         switchView('project-dashboard-view');
     }
@@ -341,6 +411,54 @@ const filterDashboardCharts = (period) => {
         btn.classList.toggle('text-gray-700', btnPeriod !== period);
     });
     renderProjectDashboardCharts(period);
+};
+
+const filterSectorDashboardCharts = (period) => {
+    dashboardPeriodFilter = period;
+     document.querySelectorAll('.sector-dashboard-filter-btn').forEach(btn => {
+        const btnPeriod = btn.getAttribute('data-period');
+        btn.classList.toggle('bg-indigo-600', btnPeriod === period);
+        btn.classList.toggle('text-white', btnPeriod === period);
+        btn.classList.toggle('bg-white', btnPeriod !== period);
+        btn.classList.toggle('text-gray-700', btnPeriod !== period);
+    });
+    renderSectorDashboardCharts(period);
+}
+
+const filterDashboardView = (mode) => {
+    projectDashboardViewMode = mode;
+    document.querySelectorAll('.dashboard-view-btn').forEach(btn => {
+        const btnView = btn.getAttribute('data-view');
+        btn.classList.toggle('bg-indigo-600', btnView === mode);
+        btn.classList.toggle('text-white', btnView === mode);
+        btn.classList.toggle('bg-white', btnView !== mode);
+        btn.classList.toggle('text-gray-700', btnView !== mode);
+    });
+    renderProjectDashboardCharts(dashboardPeriodFilter);
+}
+
+const filterSectorView = (mode) => {
+    sectorDashboardViewMode = mode;
+    document.querySelectorAll('.sector-view-btn').forEach(btn => {
+        const btnView = btn.getAttribute('data-view');
+        btn.classList.toggle('bg-indigo-600', btnView === mode);
+        btn.classList.toggle('text-white', btnView === mode);
+        btn.classList.toggle('bg-white', btnView !== mode);
+        btn.classList.toggle('text-gray-700', btnView !== mode);
+    });
+    renderSectorDashboardCharts(dashboardPeriodFilter);
+}
+
+const filterHistoryPeriod = (period) => {
+    historyFilters.period = period;
+    document.querySelectorAll('.history-filter-btn.period-btn').forEach(btn => {
+        const btnPeriod = btn.getAttribute('data-period');
+        btn.classList.toggle('bg-indigo-600', btnPeriod === period);
+        btn.classList.toggle('text-white', btnPeriod === period);
+        btn.classList.toggle('bg-white', btnPeriod !== period);
+        btn.classList.toggle('text-gray-700', btnPeriod !== period);
+    });
+    renderHistory();
 };
 
 const populateFilters = () => {
@@ -365,18 +483,6 @@ const updateSubsectorFilter = () => {
     subsectorSelect.value = historyFilters.subsector;
 };
 
-const filterHistoryPeriod = (period) => {
-    historyFilters.period = period;
-    document.querySelectorAll('.history-filter-btn.period-btn').forEach(btn => {
-        const btnPeriod = btn.getAttribute('data-period');
-        btn.classList.toggle('bg-indigo-600', btnPeriod === period);
-        btn.classList.toggle('text-white', btnPeriod === period);
-        btn.classList.toggle('bg-white', btnPeriod !== period);
-        btn.classList.toggle('text-gray-700', btnPeriod !== period);
-    });
-    renderHistory();
-};
-
 // --- INICIALIZAÇÃO E EVENT LISTENERS ---
 document.addEventListener('DOMContentLoaded', () => {
     loadData();
@@ -384,28 +490,74 @@ document.addEventListener('DOMContentLoaded', () => {
     renderProjects();
     renderInvestmentSources();
 
-    document.getElementById('source-form').addEventListener('submit', (e) => {
-        e.preventDefault();
-        sources.push({
-            id: `src_${Date.now()}`, name: e.target.elements['source-name'].value,
-            type: e.target.elements['source-type'].value, balance: parseFloat(e.target.elements['source-balance'].value)
-        });
-        saveData();
-        renderTotalBalance();
-        renderInvestmentSources();
-        closeModal('source-modal');
-        e.target.reset();
-    });
+    document.getElementById('investment-action-type').addEventListener('change', updateInvestmentFormUI);
 
     document.getElementById('project-form').addEventListener('submit', (e) => {
         e.preventDefault();
         projects.push({ id: `proj_${Date.now()}`, name: e.target.elements['project-name'].value, transactions: [] });
         saveData();
         renderProjects();
+        renderSectorIndicators();
         closeModal('project-modal');
         e.target.reset();
     });
+    
+    // Listener para o formulário de Investimento
+    document.getElementById('investment-form').addEventListener('submit', e => {
+        e.preventDefault();
+        const form = e.target;
+        const actionType = form.elements['investment-action-type'].value;
+        const project = projects.find(p => p.id === currentProjectId);
+        if (!project) return;
 
+
+        if (actionType === 'source') {
+            const name = form.elements['inv-source-name'].value;
+            const type = form.elements['inv-source-type'].value;
+            const balance = parseFloat(form.elements['inv-source-balance'].value);
+            if (!name || !type || isNaN(balance)) return;
+
+            const newSource = { id: `src_${Date.now()}`, name, type, balance };
+            sources.push(newSource);
+            
+            project.transactions.push({
+                type: 'revenue',
+                description: `Nova Fonte: ${name}`,
+                amount: balance,
+                sector: 'Financeiro',
+                subSector: 'Investimento',
+                sourceId: newSource.id,
+                date: new Date().toISOString().split('T')[0]
+            });
+
+        } else { // 'cost'
+            const sourceId = form.elements['inv-cost-source'].value;
+            const source = sources.find(s => s.id === sourceId);
+            if (!sourceId || !source) return;
+
+            const amount = parseFloat(form.elements['inv-cost-amount'].value);
+            source.balance -= amount;
+
+            project.transactions.push({
+                type: 'cost',
+                description: form.elements['inv-cost-description'].value,
+                amount: amount,
+                sector: 'Financeiro',
+                subSector: 'Investimento',
+                sourceId: sourceId,
+                date: form.elements['inv-cost-date'].value
+            });
+        }
+        
+        saveData();
+        renderTotalBalance();
+        renderProjects();
+        renderInvestmentSources();
+        renderSectorIndicators();
+        closeModal('investment-modal');
+    });
+
+    // Listener para o formulário de Transações Padrão
     document.getElementById('transaction-form').addEventListener('submit', (e) => {
         e.preventDefault();
         const form = e.target;
@@ -418,32 +570,25 @@ document.addEventListener('DOMContentLoaded', () => {
         const project = projects.find(p => p.id === currentProjectId);
         if (!project) return console.error('Projeto inválido.');
 
-        if (sector === 'Financeiro' && subSector === 'Captação' && type === 'revenue') {
-            const newSource = {
-                id: `src_${Date.now()}`, name: description,
-                type: form.elements['captacao-source-type'].value, balance: amount
-            };
-            sources.push(newSource);
-            project.transactions.push({ 
-                type, description, amount, sector, subSector, 
-                sourceId: newSource.id, date, captacaoType: newSource.type
-            });
-        } else {
-            const sourceId = form.elements['transaction-source'].value;
-            const source = sources.find(s => s.id === sourceId);
-            if (!source) return console.error('Fonte de Recurso inválida.');
-            source.balance += (type === 'revenue' ? amount : -amount);
-            const newTransaction = { type, description, amount, sector, subSector, sourceId, date };
-            if (sector === 'Financeiro' && subSector === 'Captação') {
-                newTransaction.captacaoType = form.elements['captacao-source-type'].value;
-            }
-            project.transactions.push(newTransaction);
+        const sourceId = form.elements['transaction-source'].value;
+        const sourceSelect = form.elements['transaction-source'];
+        if (!sourceId) {
+            sourceSelect.classList.add('border-red-500', 'ring-2', 'ring-red-500');
+            setTimeout(() => sourceSelect.classList.remove('border-red-500', 'ring-2', 'ring-red-500'), 2000);
+            return;
         }
+        const source = sources.find(s => s.id === sourceId);
+        if (!source) return console.error('Fonte de Recurso inválida.');
+
+        source.balance += (type === 'revenue' ? amount : -amount);
+        const newTransaction = { type, description, amount, sector, subSector, sourceId, date };
+        project.transactions.push(newTransaction);
         
         saveData();
-        renderProjects();
         renderTotalBalance();
+        renderProjects();
         renderInvestmentSources();
+        renderSectorIndicators();
         closeModal('transaction-modal');
     });
 
@@ -457,11 +602,22 @@ document.addEventListener('DOMContentLoaded', () => {
         historyFilters.subsector = e.target.value;
         renderHistory();
     });
+
+    // Close modals on outside click
+    ['project-modal', 'investment-modal', 'transaction-modal'].forEach(modalId => {
+        const modal = document.getElementById(modalId);
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) {
+                closeModal(modalId);
+            }
+        });
+    });
 });
 
-// History rendering (pasted from previous correct version, no changes needed here)
+// History rendering
 const renderHistory = () => {
     const list = document.getElementById('history-list');
+    if(!list) return; // Add guard clause
     list.innerHTML = '';
     
     let allTransactions = [];
@@ -471,19 +627,7 @@ const renderHistory = () => {
         });
     });
 
-    const now = new Date();
-    let startDate;
-    if (historyFilters.period === 'week') {
-        const firstDayOfWeek = new Date(now.setDate(now.getDate() - now.getDay()));
-        firstDayOfWeek.setHours(0, 0, 0, 0);
-        startDate = firstDayOfWeek;
-    } else if (historyFilters.period === 'month') {
-        startDate = new Date(now.getFullYear(), now.getMonth(), 1);
-    } else { // year
-        startDate = new Date(now.getFullYear(), 0, 1);
-    }
-    
-    let filteredTransactions = allTransactions.filter(t => new Date(t.date) >= startDate);
+    let filteredTransactions = allTransactions.filter(t => isDateInPeriod(t.date, historyFilters.period));
     
     if (historyFilters.sector !== 'all') {
         filteredTransactions = filteredTransactions.filter(t => t.sector === historyFilters.sector);
@@ -516,4 +660,7 @@ const renderHistory = () => {
         list.appendChild(item);
     });
 };
+</script>
+</body>
+</html>
 
