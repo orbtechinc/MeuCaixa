@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gestor de Projetos</title>
+    <title>Meu Caixa</title>
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Chart.js CDN for graphs -->
@@ -20,20 +20,20 @@
     </header>
 
     <!-- Main Content Area (with padding to avoid overlap) -->
-    <main class="pt-24 pb-20">
+    <main class="pt-24 pb-20 md:pt-28">
         <!-- Home Page View -->
         <div id="home-view">
-            <div class="p-6">
-                <h1 class="text-2xl font-bold mb-4">Seus Projetos</h1>
-                <!-- Project Carousel -->
-                <div id="project-carousel" class="flex overflow-x-auto gap-4 snap-x pb-4">
+            <div class="p-6 max-w-7xl mx-auto">
+                <h1 class="text-2xl font-bold mb-4">Meus Projetos</h1>
+                <!-- Project Carousel/Grid -->
+                <div id="project-carousel" class="flex overflow-x-auto gap-4 snap-x pb-4 md:grid md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 md:overflow-visible">
                     <!-- Projects will be inserted here by JS -->
                 </div>
             </div>
 
             <!-- Investment Sources List -->
-            <div id="investment-sources-list-container" class="p-6">
-                <h2 class="text-2xl font-bold mb-4">Fontes de Recurso</h2>
+            <div id="investment-sources-list-container" class="p-6 max-w-7xl mx-auto">
+                <h2 class="text-2xl font-bold mb-4">Fontes de Investimento</h2>
                 <div id="investment-sources-list" class="space-y-3">
                     <!-- Source items will be inserted here by JS -->
                 </div>
@@ -41,7 +41,7 @@
         </div>
 
         <!-- Sectors Page View -->
-        <div id="sectors-view" class="hidden p-6">
+        <div id="sectors-view" class="hidden p-6 max-w-7xl mx-auto">
             <div class="flex items-center mb-4 relative">
                  <button onclick="switchView('home-view')" class="absolute left-0 p-2 text-indigo-600">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -50,25 +50,29 @@
                  </button>
                  <h1 id="sectors-project-name" class="text-2xl font-bold w-full text-center">Nome do Projeto</h1>
             </div>
-            <p class="text-center text-gray-500 mb-6">Selecione um subsetor para registrar uma operação.</p>
-            <div class="flex overflow-x-auto gap-4 snap-x pb-4">
+            <p class="text-center text-gray-500 mb-6">Selecione uma ação ou subsetor.</p>
+            <div class="flex overflow-x-auto gap-4 snap-x pb-4 md:grid md:grid-cols-3 md:overflow-visible">
                 <!-- Sector Cards with Subsectors -->
-                <div class="flex-shrink-0 w-full max-w-xs mx-auto bg-white rounded-xl shadow-lg flex flex-col p-6 snap-center aspect-[1080/1220]">
+                <div class="sector-card sector-card-financeiro flex-shrink-0 w-full max-w-xs md:max-w-none mx-auto bg-white rounded-xl shadow-lg flex flex-col p-4 snap-center">
                     <div class="flex items-center mb-4">
-                        <div class="bg-blue-100 p-3 rounded-full mr-4"><svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 17h8m0 0V9m0 8l-8-8-4 4-6-6"/></svg></div>
                         <h3 class="text-xl font-bold">Financeiro</h3>
                     </div>
+                    <div id="financeiro-indicators" class="text-sm space-y-1 my-4 border-t border-b py-2">
+                        <!-- Indicators will be injected here by JS -->
+                    </div>
                     <div class="flex-grow space-y-2 flex flex-col justify-center">
+                       <button onclick="openInvestmentModal()" class="subsector-button w-full text-left p-3 rounded-lg border">Investimento</button>
                        <button onclick="openTransactionModal('Financeiro', 'Planejamento')" class="subsector-button w-full text-left p-3 rounded-lg border">Planejamento</button>
-                       <button onclick="openTransactionModal('Financeiro', 'Captação')" class="subsector-button w-full text-left p-3 rounded-lg border">Captação</button>
                        <button onclick="openTransactionModal('Financeiro', 'Recursos')" class="subsector-button w-full text-left p-3 rounded-lg border">Recursos</button>
                     </div>
                 </div>
 
-                <div class="flex-shrink-0 w-full max-w-xs mx-auto bg-white rounded-xl shadow-lg flex flex-col p-6 snap-center aspect-[1080/1220]">
+                <div class="sector-card sector-card-operacional flex-shrink-0 w-full max-w-xs md:max-w-none mx-auto bg-white rounded-xl shadow-lg flex flex-col p-4 snap-center">
                      <div class="flex items-center mb-4">
-                        <div class="bg-green-100 p-3 rounded-full mr-4"><svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg></div>
                         <h3 class="text-xl font-bold">Operacional</h3>
+                    </div>
+                    <div id="operacional-indicators" class="text-sm space-y-1 my-4 border-t border-b py-2">
+                        <!-- Indicators will be injected here by JS -->
                     </div>
                     <div class="flex-grow space-y-2 flex flex-col justify-center">
                        <button onclick="openTransactionModal('Operacional', 'Treinamento')" class="subsector-button w-full text-left p-3 rounded-lg border">Treinamento</button>
@@ -77,10 +81,12 @@
                     </div>
                 </div>
 
-                <div class="flex-shrink-0 w-full max-w-xs mx-auto bg-white rounded-xl shadow-lg flex flex-col p-6 snap-center aspect-[1080/1220]">
+                <div class="sector-card sector-card-comercial flex-shrink-0 w-full max-w-xs md:max-w-none mx-auto bg-white rounded-xl shadow-lg flex flex-col p-4 snap-center">
                     <div class="flex items-center mb-4">
-                        <div class="bg-red-100 p-3 rounded-full mr-4"><svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 3.055A9.001 9.001 0 1020.945 13H11V3.055z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.488 9H15V3.512A9.025 9.025 0 0120.488 9z" /></svg></div>
                         <h3 class="text-xl font-bold">Comercial</h3>
+                    </div>
+                     <div id="comercial-indicators" class="text-sm space-y-1 my-4 border-t border-b py-2">
+                        <!-- Indicators will be injected here by JS -->
                     </div>
                      <div class="flex-grow space-y-2 flex flex-col justify-center">
                        <button onclick="openTransactionModal('Comercial', 'Marketing')" class="subsector-button w-full text-left p-3 rounded-lg border">Marketing</button>
@@ -92,7 +98,7 @@
         </div>
 
         <!-- Dashboard/Results Page View (For Projects) -->
-        <div id="project-dashboard-view" class="hidden p-6">
+        <div id="project-dashboard-view" class="hidden p-6 max-w-7xl mx-auto">
              <div class="flex items-center mb-4 relative">
                  <button onclick="switchView('home-view')" class="absolute left-0 p-2 text-indigo-600">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -101,19 +107,23 @@
                  </button>
                  <h1 class="text-2xl font-bold w-full text-center">Resultados dos Projetos</h1>
              </div>
-             <div class="flex justify-center gap-2 mb-4">
+             <div class="flex justify-center gap-2 mb-2">
                  <button onclick="filterDashboardCharts('week')" data-period="week" class="dashboard-filter-btn period-btn bg-indigo-600 text-white px-4 py-2 rounded-full text-sm font-semibold">Semana</button>
                  <button onclick="filterDashboardCharts('month')" data-period="month" class="dashboard-filter-btn period-btn bg-white text-gray-700 px-4 py-2 rounded-full text-sm font-semibold">Mês</button>
                  <button onclick="filterDashboardCharts('year')" data-period="year" class="dashboard-filter-btn period-btn bg-white text-gray-700 px-4 py-2 rounded-full text-sm font-semibold">Ano</button>
              </div>
+             <div class="flex justify-center gap-2 mb-4 border-t pt-4 mt-4">
+                 <button onclick="filterDashboardView('bars')" data-view="bars" class="dashboard-view-btn view-btn bg-indigo-600 text-white px-4 py-2 rounded-full text-sm font-semibold">Barras</button>
+                 <button onclick="filterDashboardView('pizza')" data-view="pizza" class="dashboard-view-btn view-btn bg-white text-gray-700 px-4 py-2 rounded-full text-sm font-semibold">Pizza</button>
+             </div>
              <!-- Charts Container for projects -->
-             <div id="project-charts-container" class="space-y-6">
+             <div id="project-charts-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 <!-- Pie charts and bar charts for projects will be injected here -->
              </div>
         </div>
         
         <!-- Dashboard/Results Page View (For Sectors) -->
-        <div id="sector-dashboard-view" class="hidden p-6">
+        <div id="sector-dashboard-view" class="hidden p-6 max-w-7xl mx-auto">
              <div class="flex items-center mb-4 relative">
                  <button onclick="switchView('sectors-view', currentProjectId)" class="absolute left-0 p-2 text-indigo-600">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -122,14 +132,23 @@
                  </button>
                  <h1 class="text-2xl font-bold w-full text-center">Resultados dos Setores</h1>
              </div>
+              <div class="flex justify-center gap-2 mb-2">
+                 <button onclick="filterSectorDashboardCharts('week')" data-period="week" class="sector-dashboard-filter-btn period-btn bg-indigo-600 text-white px-4 py-2 rounded-full text-sm font-semibold">Semana</button>
+                 <button onclick="filterSectorDashboardCharts('month')" data-period="month" class="sector-dashboard-filter-btn period-btn bg-white text-gray-700 px-4 py-2 rounded-full text-sm font-semibold">Mês</button>
+                 <button onclick="filterSectorDashboardCharts('year')" data-period="year" class="sector-dashboard-filter-btn period-btn bg-white text-gray-700 px-4 py-2 rounded-full text-sm font-semibold">Ano</button>
+             </div>
+              <div class="flex justify-center gap-2 mb-4 border-t pt-4 mt-4">
+                 <button onclick="filterSectorView('bars')" data-view="bars" class="sector-view-btn view-btn bg-indigo-600 text-white px-4 py-2 rounded-full text-sm font-semibold">Barras</button>
+                 <button onclick="filterSectorView('pizza')" data-view="pizza" class="sector-view-btn view-btn bg-white text-gray-700 px-4 py-2 rounded-full text-sm font-semibold">Pizza</button>
+             </div>
              <!-- Charts Container for subsectors -->
-             <div id="sector-charts-container" class="space-y-6">
+             <div id="sector-charts-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 <!-- Bar charts for subsectors will be injected here -->
              </div>
         </div>
 
         <!-- History Page View -->
-        <div id="history-view" class="hidden p-6">
+        <div id="history-view" class="hidden p-6 max-w-7xl mx-auto">
             <div class="flex items-center mb-4 relative">
                 <button onclick="switchView('home-view')" class="absolute left-0 p-2 text-indigo-600">
                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -159,58 +178,41 @@
     </main>
 
     <!-- Bottom Navigation Bar (Fixed) -->
-    <footer class="fixed bottom-0 left-0 right-0 bg-white shadow-t-lg border-t border-gray-200 p-2 flex justify-around items-center z-10">
-        <button onclick="openModal('source-modal')" class="flex flex-col items-center text-gray-500 hover:text-indigo-600">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
-            <span class="text-xs">Fontes</span>
-        </button>
-        
-        <button id="create-project-btn" onclick="openModal('project-modal')" class="flex flex-col items-center text-gray-500 hover:text-indigo-600">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" /></svg>
-            <span class="text-xs">Criar Projeto</span>
-        </button>
-        
-        <button id="history-btn" onclick="switchView('history-view')" class="flex flex-col items-center text-gray-500 hover:text-indigo-600 hidden">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-            <span class="text-xs">Histórico</span>
-        </button>
-
-        <button onclick="showResults()" class="nav-btn-dash flex flex-col items-center text-gray-500 hover:text-indigo-600">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>
-            <span class="text-xs">Resultados</span>
-        </button>
+    <footer id="footer-nav" class="fixed bottom-0 left-0 right-0 bg-white shadow-t-lg border-t border-gray-200 p-2 flex justify-around items-center z-10">
+        <!-- Home Page Navigation -->
+        <div id="home-nav" class="w-full flex justify-around items-center">
+             <button onclick="switchView('history-view')" class="flex flex-col items-center text-gray-500 hover:text-indigo-600">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" /></svg>
+                <span class="text-xs">Histórico</span>
+            </button>
+            <button onclick="openModal('project-modal')" class="flex flex-col items-center text-gray-500 hover:text-indigo-600">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                <span class="text-xs">Criar Projeto</span>
+            </button>
+            <button onclick="showResults()" class="flex flex-col items-center text-gray-500 hover:text-indigo-600">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>
+                <span class="text-xs">Resultados</span>
+            </button>
+        </div>
+        <!-- Sectors Page Navigation -->
+        <div id="sectors-nav" class="w-full flex justify-around items-center hidden">
+             <button onclick="switchView('history-view')" class="flex flex-col items-center text-gray-500 hover:text-indigo-600">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" /></svg>
+                <span class="text-xs">Histórico</span>
+            </button>
+            <button onclick="switchView('home-view')" class="flex flex-col items-center text-gray-500 hover:text-indigo-600">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a2 2 0 002 2h10a2 2 0 002-2V10M9 20v-6a2 2 0 012-2h2a2 2 0 012 2v6" /></svg>
+                <span class="text-xs">Home</span>
+            </button>
+            <button onclick="showResults()" class="flex flex-col items-center text-gray-500 hover:text-indigo-600">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg>
+                <span class="text-xs">Resultados</span>
+            </button>
+        </div>
     </footer>
 
-    <!-- Modals (structure remains the same) -->
-    <div id="source-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 hidden">
-        <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm">
-            <h2 class="text-xl font-bold mb-4">Nova Fonte de Investimento</h2>
-            <form id="source-form">
-                <div class="mb-4">
-                    <label for="source-name" class="block text-sm font-medium text-gray-600 mb-1">Nome da Fonte</label>
-                    <input type="text" id="source-name" placeholder="Ex: Conta Principal" class="w-full p-2 border border-gray-300 rounded-lg" required>
-                </div>
-                <div class="mb-4">
-                    <label for="source-type" class="block text-sm font-medium text-gray-600 mb-1">Tipo</label>
-                    <select id="source-type" class="w-full p-2 border border-gray-300 rounded-lg" required>
-                        <option>Banco</option>
-                        <option>Corretora</option>
-                        <option>Dinheiro Vivo</option>
-                    </select>
-                </div>
-                <div class="mb-4">
-                    <label for="source-balance" class="block text-sm font-medium text-gray-600 mb-1">Saldo Inicial</label>
-                    <input type="number" id="source-balance" placeholder="1000.00" step="0.01" class="w-full p-2 border border-gray-300 rounded-lg" required>
-                </div>
-                <div class="flex justify-end gap-2">
-                    <button type="button" onclick="closeModal('source-modal')" class="px-4 py-2 bg-gray-200 rounded-lg">Cancelar</button>
-                    <button type="submit" class="px-4 py-2 bg-indigo-600 text-white rounded-lg">Adicionar</button>
-                </div>
-            </form>
-        </div>
-    </div>
-
-    <div id="project-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 hidden">
+    <!-- Modals -->
+    <div id="project-modal" onclick="closeModalOnOutsideClick(event)" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 hidden">
         <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm">
             <h2 class="text-xl font-bold mb-4">Novo Projeto</h2>
             <form id="project-form">
@@ -226,7 +228,73 @@
         </div>
     </div>
 
-    <div id="transaction-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 hidden">
+    <!-- Modal Unificado para Investimento -->
+    <div id="investment-modal" onclick="closeModalOnOutsideClick(event)" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 hidden">
+        <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm">
+            <h2 class="text-xl font-bold mb-2">Ação de Investimento</h2>
+            <h3 id="investment-project-name" class="text-indigo-600 font-semibold mb-4"></h3>
+            <form id="investment-form">
+                <div class="mb-4">
+                    <label for="investment-action-type" class="block text-sm font-medium text-gray-600 mb-1">Tipo de Ação</label>
+                    <select id="investment-action-type" class="w-full p-2 border border-gray-300 rounded-lg">
+                        <option value="source">Fonte de Investimento</option>
+                        <option value="cost">Custo</option>
+                    </select>
+                </div>
+
+                <!-- Fields for a new Source -->
+                <div id="investment-source-fields">
+                    <div class="mb-4">
+                        <label for="inv-source-name" class="block text-sm font-medium text-gray-600 mb-1">Nome da Fonte</label>
+                        <input type="text" id="inv-source-name" placeholder="Ex: Investidor Anjo" class="w-full p-2 border border-gray-300 rounded-lg">
+                    </div>
+                    <div class="mb-4">
+                        <label for="inv-source-type" class="block text-sm font-medium text-gray-600 mb-1">Tipo</label>
+                        <select id="inv-source-type" class="w-full p-2 border border-gray-300 rounded-lg">
+                            <option>Meu Caixa</option>
+                            <option>Investidor Anjo</option>
+                            <option>Empréstimo</option>
+                            <option>Crédito</option>
+                            <option>Corretora</option>
+                        </select>
+                    </div>
+                    <div class="mb-4">
+                        <label for="inv-source-balance" class="block text-sm font-medium text-gray-600 mb-1">Saldo Inicial</label>
+                        <input type="number" id="inv-source-balance" placeholder="1000.00" step="0.01" class="w-full p-2 border border-gray-300 rounded-lg">
+                    </div>
+                </div>
+
+                <!-- Fields for a Cost Operation -->
+                <div id="investment-cost-fields" class="hidden">
+                     <div class="mb-4">
+                        <label for="inv-cost-description" class="block text-sm font-medium text-gray-600 mb-1">Nome da Operação</label>
+                        <input type="text" id="inv-cost-description" placeholder="Ex: Taxa de Abertura" class="w-full p-2 border border-gray-300 rounded-lg">
+                    </div>
+                    <div class="mb-4">
+                        <label for="inv-cost-date" class="block text-sm font-medium text-gray-600 mb-1">Data</label>
+                        <input type="date" id="inv-cost-date" class="w-full p-2 border border-gray-300 rounded-lg">
+                    </div>
+                     <div class="mb-4">
+                        <label for="inv-cost-source" class="block text-sm font-medium text-gray-600 mb-1">Debitar da Fonte</label>
+                        <select id="inv-cost-source" class="w-full p-2 border border-gray-300 rounded-lg">
+                        </select>
+                    </div>
+                    <div class="mb-4">
+                        <label for="inv-cost-amount" class="block text-sm font-medium text-gray-600 mb-1">Valor do Custo</label>
+                        <input type="number" id="inv-cost-amount" placeholder="100.00" step="0.01" class="w-full p-2 border border-gray-300 rounded-lg">
+                    </div>
+                </div>
+
+                <div class="flex justify-end gap-2">
+                    <button type="button" onclick="closeModal('investment-modal')" class="px-4 py-2 bg-gray-200 rounded-lg">Cancelar</button>
+                    <button type="submit" class="px-4 py-2 bg-indigo-600 text-white rounded-lg">Adicionar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal Padrão para Outras Transações -->
+    <div id="transaction-modal" onclick="closeModalOnOutsideClick(event)" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 hidden">
         <div class="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm">
             <h2 class="text-xl font-bold mb-2">Adicionar Operação</h2>
             <h3 id="transaction-project-name" class="text-indigo-600 font-semibold mb-4"></h3>
@@ -237,8 +305,8 @@
                     <div>
                         <label for="transaction-type" class="block text-sm font-medium text-gray-600 mb-1">Tipo</label>
                         <select id="transaction-type" class="w-full p-2 border border-gray-300 rounded-lg" required>
-                            <option value="revenue">Receita</option>
                             <option value="cost">Custo</option>
+                            <option value="revenue">Receita</option>
                         </select>
                     </div>
                      <div>
@@ -250,19 +318,8 @@
                     <label for="transaction-description" class="block text-sm font-medium text-gray-600 mb-1">Nome da Operação</label>
                     <input type="text" id="transaction-description" placeholder="Ex: Venda de licença" class="w-full p-2 border border-gray-300 rounded-lg" required>
                 </div>
-                <!-- Fields for Captação only -->
-                <div id="captacao-fields" class="hidden">
-                    <div class="mb-4">
-                        <label for="captacao-source-type" class="block text-sm font-medium text-gray-600 mb-1">Fonte da Captação</label>
-                        <select id="captacao-source-type" class="w-full p-2 border border-gray-300 rounded-lg">
-                            <option>Investidor</option>
-                            <option>Empréstimo</option>
-                            <option>Crédito</option>
-                        </select>
-                    </div>
-                </div>
                  <div id="transaction-source-wrapper" class="mb-4">
-                    <label for="transaction-source" class="block text-sm font-medium text-gray-600 mb-1">Fonte de Recurso</label>
+                    <label for="transaction-source" class="block text-sm font-medium text-gray-600 mb-1">Fonte de Investimento</label>
                     <select id="transaction-source" class="w-full p-2 border border-gray-300 rounded-lg" required>
                         <!-- Sources will be populated by JS -->
                     </select>
@@ -279,7 +336,7 @@
         </div>
     </div>
     
-    <!-- Link para o seu arquivo JavaScript -->
+    <!-- Link para o arquivo JavaScript -->
     <script src="script.js"></script>
 </body>
 </html>
