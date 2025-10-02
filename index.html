@@ -428,7 +428,15 @@
         } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
         // --- REFERÊNCIAS GLOBAIS ---
-        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
+        // TODO: Substitua este objeto pela configuração do seu projeto Firebase
+        const firebaseConfig = {
+            apiKey: "SUA_API_KEY",
+            authDomain: "SEU_AUTH_DOMAIN",
+            projectId: "SEU_PROJECT_ID",
+            storageBucket: "SEU_STORAGE_BUCKET",
+            messagingSenderId: "SEU_MESSAGING_SENDER_ID",
+            appId: "SEU_APP_ID"
+        };
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
         const db = getFirestore(app);
@@ -543,10 +551,9 @@
             unsubscribeProjects();
             unsubscribeSources();
             if (!userId) return;
-            const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
 
-            const projectsCollectionPath = `/artifacts/${appId}/users/${userId}/projects`;
-            const sourcesCollectionPath = `/artifacts/${appId}/users/${userId}/sources`;
+            const projectsCollectionPath = `/users/${userId}/projects`;
+            const sourcesCollectionPath = `/users/${userId}/sources`;
 
             const projectsCollection = collection(db, projectsCollectionPath);
             unsubscribeProjects = onSnapshot(projectsCollection, (snapshot) => {
@@ -683,17 +690,17 @@
         
         const updateSubsectorFilter = () => { const sector = document.getElementById('sector-filter').value; const subsectorSelect = document.getElementById('subsector-filter'); subsectorSelect.innerHTML = ''; (subsectorsBySector[sector] || []).forEach(sub => { const value = sub.toLowerCase().includes('todos') ? 'all' : sub; subsectorSelect.innerHTML += `<option value="${value}">${sub}</option>`; }); subsectorSelect.value = historyFilters.subsector; };
         
-        async function moveItemToTrash(event, type, id) { if (event) event.stopPropagation(); if (!userId) return; const appId = typeof __app_id != "undefined" ? __app_id : "default-app-id"; const collectionName = type === 'project' ? 'projects' : 'sources'; const docRef = doc(db, `/artifacts/${appId}/users/${userId}/${collectionName}`, id); try { await updateDoc(docRef, { deleted: true }); } catch (error) { console.error(`Erro ao mover ${type} para a lixeira:`, error); } }
+        async function moveItemToTrash(event, type, id) { if (event) event.stopPropagation(); if (!userId) return; const collectionName = type === 'project' ? 'projects' : 'sources'; const docRef = doc(db, `users/${userId}/${collectionName}`, id); try { await updateDoc(docRef, { deleted: true }); } catch (error) { console.error(`Erro ao mover ${type} para a lixeira:`, error); } }
         
-        async function restoreItem(type, id) { if (!userId) return; const appId = typeof __app_id != "undefined" ? __app_id : "default-app-id"; const collectionName = type === 'project' ? 'projects' : 'sources'; const docRef = doc(db, `/artifacts/${appId}/users/${userId}/${collectionName}`, id); try { await updateDoc(docRef, { deleted: false }); } catch (error) { console.error(`Erro ao restaurar ${type}:`, error); } }
+        async function restoreItem(type, id) { if (!userId) return; const collectionName = type === 'project' ? 'projects' : 'sources'; const docRef = doc(db, `users/${userId}/${collectionName}`, id); try { await updateDoc(docRef, { deleted: false }); } catch (error) { console.error(`Erro ao restaurar ${type}:`, error); } }
         
         function confirmDeletePermanently(type, id) { const item = type === 'project' ? projects.find(p => p.id === id) : sources.find(s => s.id === id); if (!item) return; if (confirm(`EXCLUIR PERMANENTEMENTE "${item.name}"? Esta ação é irreversível.`)) { deleteItemPermanently(type, id); } }
         
-        async function deleteItemPermanently(type, id) { if (!userId) return; const appId = typeof __app_id != "undefined" ? __app_id : "default-app-id"; const collectionName = type === 'project' ? 'projects' : 'sources'; const docRef = doc(db, `/artifacts/${appId}/users/${userId}/${collectionName}`, id); try { await deleteDoc(docRef); } catch (error) { console.error(`Erro ao excluir ${type} permanentemente:`, error); } }
+        async function deleteItemPermanently(type, id) { if (!userId) return; const collectionName = type === 'project' ? 'projects' : 'sources'; const docRef = doc(db, `users/${userId}/${collectionName}`, id); try { await deleteDoc(docRef); } catch (error) { console.error(`Erro ao excluir ${type} permanentemente:`, error); } }
         
         function confirmClearTrash() { if (confirm("Tem certeza que deseja esvaziar a lixeira? Todos os itens serão excluídos permanentemente.")) { clearTrash(); } }
         
-        async function clearTrash() { if (!userId) return; const appId = typeof __app_id != "undefined" ? __app_id : "default-app-id"; const batch = writeBatch(db); projects.filter(p => p.deleted).forEach(p => { const docRef = doc(db, `/artifacts/${appId}/users/${userId}/projects`, p.id); batch.delete(docRef); }); sources.filter(s => s.deleted).forEach(s => { const docRef = doc(db, `/artifacts/${appId}/users/${userId}/sources`, s.id); batch.delete(docRef); }); try { await batch.commit(); } catch (error) { console.error("Erro ao esvaziar a lixeira:", error); } }
+        async function clearTrash() { if (!userId) return; const batch = writeBatch(db); projects.filter(p => p.deleted).forEach(p => { const docRef = doc(db, `users/${userId}/projects`, p.id); batch.delete(docRef); }); sources.filter(s => s.deleted).forEach(s => { const docRef = doc(db, `users/${userId}/sources`, s.id); batch.delete(docRef); }); try { await batch.commit(); } catch (error) { console.error("Erro ao esvaziar a lixeira:", error); } }
         
         const renderAll = () => { renderTotalBalance(); renderProjects(); renderInvestmentSources(); if (currentProjectId) { renderSectorIndicators(); } };
         
@@ -719,8 +726,7 @@
                 const projectName = e.target.elements['project-name'].value;
                 if (!projectName) return;
                 
-                const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-                const projectsCollectionPath = `/artifacts/${appId}/users/${userId}/projects`;
+                const projectsCollectionPath = `/users/${userId}/projects`;
                 
                 try {
                     await addDoc(collection(db, projectsCollectionPath), { name: projectName, transactions: [], deleted: false });
@@ -729,18 +735,14 @@
                 } catch (error) { console.error("Erro ao criar projeto:", error); }
             });
 
-            // Add other form listeners here...
-             document.getElementById('investment-action-type').addEventListener('change', updateInvestmentFormUI);
+            document.getElementById('investment-action-type').addEventListener('change', updateInvestmentFormUI);
 
-            // Listener para o formulário de Investimento
             document.getElementById('investment-form').addEventListener('submit', async (e) => {
                 e.preventDefault();
                 const form = e.target;
                 const actionType = form.elements['investment-action-type'].value;
                 const project = projects.find(p => p.id === currentProjectId);
                 if (!project || !userId) return;
-                
-                const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
 
                 if (actionType === 'source') {
                     const name = form.elements['inv-source-name'].value;
@@ -748,10 +750,10 @@
                     const balance = parseFloat(form.elements['inv-source-balance'].value);
                     if (!name || !type || isNaN(balance)) return;
 
-                    const sourcesCollectionPath = `/artifacts/${appId}/users/${userId}/sources`;
+                    const sourcesCollectionPath = `/users/${userId}/sources`;
                     const newSourceRef = await addDoc(collection(db, sourcesCollectionPath), { name, type, balance, deleted: false });
 
-                    const projectDocRef = doc(db, `/artifacts/${appId}/users/${userId}/projects`, project.id);
+                    const projectDocRef = doc(db, `users/${userId}/projects`, project.id);
                     await updateDoc(projectDocRef, {
                         transactions: arrayUnion({
                             type: 'revenue',
@@ -771,10 +773,10 @@
                     const amount = parseFloat(form.elements['inv-cost-amount'].value);
                     const newBalance = source.balance - amount;
                     
-                    const sourceDocRef = doc(db, `/artifacts/${appId}/users/${userId}/sources`, sourceId);
+                    const sourceDocRef = doc(db, `users/${userId}/sources`, sourceId);
                     await updateDoc(sourceDocRef, { balance: newBalance });
                     
-                    const projectDocRef = doc(db, `/artifacts/${appId}/users/${userId}/projects`, project.id);
+                    const projectDocRef = doc(db, `users/${userId}/projects`, project.id);
                     await updateDoc(projectDocRef, {
                         transactions: arrayUnion({
                             type: 'cost',
@@ -790,7 +792,6 @@
                 closeModal('investment-modal');
             });
 
-            // Listener para o formulário de Transações Padrão
             document.getElementById('transaction-form').addEventListener('submit', async (e) => {
                 e.preventDefault();
                 const form = e.target;
@@ -805,11 +806,10 @@
                 const type = form.elements['transaction-type'].value;
                 const newBalance = source.balance + (type === 'revenue' ? amount : -amount);
                 
-                const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-                const sourceDocRef = doc(db, `/artifacts/${appId}/users/${userId}/sources`, sourceId);
+                const sourceDocRef = doc(db, `users/${userId}/sources`, sourceId);
                 await updateDoc(sourceDocRef, { balance: newBalance });
 
-                const projectDocRef = doc(db, `/artifacts/${appId}/users/${userId}/projects`, project.id);
+                const projectDocRef = doc(db, `users/${userId}/projects`, project.id);
                 await updateDoc(projectDocRef, {
                     transactions: arrayUnion({
                         type: type,
@@ -845,4 +845,5 @@
     </script>
 </body>
 </html>
+"
 
