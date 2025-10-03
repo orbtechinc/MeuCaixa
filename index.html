@@ -4,69 +4,13 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Meu Caixa (Firebase com Login)</title>
-    <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Chart.js CDN for graphs -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <!-- Estilos CSS -->
-    <style>
-        /* Estilos básicos e do tema escuro */
-        :root {
-            --bg-color: #f3f4f6; /* gray-100 */
-            --text-color: #1f2937; /* gray-800 */
-            --card-bg-color: #ffffff;
-            --header-bg-color: #ffffff;
-            --border-color: #e5e7eb; /* gray-200 */
-        }
-        html.dark {
-            --bg-color: #111827; /* gray-900 */
-            --text-color: #f9fafb; /* gray-50 */
-            --card-bg-color: #1f2937; /* gray-800 */
-            --header-bg-color: #1f2937;
-            --border-color: #374151; /* gray-700 */
-        }
-        body {
-            background-color: var(--bg-color);
-            color: var(--text-color);
-        }
-        .card, header, footer {
-            background-color: var(--card-bg-color);
-            border-color: var(--border-color);
-        }
-        header { background-color: var(--header-bg-color); }
-        .project-card, .sector-card, .source-item, .trash-item, .history-item, .chart-card {
-            background-color: var(--card-bg-color);
-        }
-        /* Custom scrollbar */
-        ::-webkit-scrollbar { width: 0; height: 0; background: transparent; }
-        .snap-x { scroll-snap-type: x mandatory; }
-        .snap-center { scroll-snap-align: center; }
-        body, html { height: 100%; margin: 0; font-family: 'Inter', sans-serif; overflow: hidden; }
-        main { overflow-y: auto; height: 100%; position: relative; }
-        .subsector-button { transition: background-color 0.2s, transform 0.2s; }
-        .subsector-button:active { transform: scale(0.98); background-color: #f0f0f0; }
-        html.dark .subsector-button:active { background-color: #374151; }
-        .source-item, .trash-item { display: flex; justify-content: space-between; align-items: center; padding: 1rem; border-radius: 0.75rem; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1); }
-        .history-item, .project-card, .sector-card { display: flex; flex-direction: column; padding: 1rem; border-radius: 0.75rem; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1); }
-        .history-item { border-left-width: 5px; }
-        .project-card, .sector-card { border-top-width: 5px; }
-        .history-item-revenue, .card-positive { border-color: #22c55e; }
-        .history-item-cost, .card-negative { border-color: #ef4444; }
-        .card-neutral { border-color: #f59e0b; }
-        .chart-card { height: 280px; display: flex; flex-direction: column; }
-        .chart-card h2, .chart-card h3 { text-align: center; font-weight: bold; margin-bottom: 0.5rem; flex-shrink: 0; font-size: 1rem; }
-        .chart-card canvas { flex-grow: 1; min-height: 0; }
-        .sector-card-financeiro { border-color: #ef4444; }
-        .sector-card-operacional { border-color: #f59e0b; }
-        .sector-card-comercial { border-color: #22c55e; }
-        #notification-banner { transition: transform 0.3s ease-in-out; }
-    </style>
+    <link rel="stylesheet" href="styles.css">
 </head>
 <body class="transition-colors duration-300">
 
-    <!-- Container de Autenticação -->
     <div id="auth-container" class="w-full h-full">
-        <!-- Tela 1: Landing Page -->
         <div id="landing-view" class="w-full h-full flex flex-col justify-center items-center p-6 text-center bg-gray-50 dark:bg-gray-900">
             <h1 class="text-4xl md:text-5xl font-extrabold text-indigo-600 mb-4">Meu Caixa</h1>
             <p class="text-lg md:text-xl text-gray-600 dark:text-gray-300 max-w-2xl mb-8">O controle financeiro dos seus projetos, simplificado. Acompanhe receitas, custos e resultados em tempo real, do seu celular ou desktop.</p>
@@ -80,9 +24,6 @@
                 <button onclick="handleAnonymousLogin()" class="w-full text-sm text-gray-500 dark:text-gray-400 font-semibold py-2 px-4 rounded-lg hover:underline">
                     Continuar para demonstração
                 </button>
-                <button onclick="handleLocalTest()" class="w-full text-sm text-gray-500 dark:text-gray-400 font-semibold py-2 px-4 rounded-lg hover:underline">
-                    Entrar sem Login (Teste Local)
-                </button>
             </div>
              <div id="firebase-config-error" class="hidden w-full max-w-lg text-center p-6 bg-red-100 dark:bg-red-800 border border-red-400 dark:border-red-600 rounded-lg">
                 <h2 class="text-2xl font-bold text-red-800 dark:text-red-200 mb-4">Configuração Incompleta</h2>
@@ -95,7 +36,6 @@
             </div>
         </div>
 
-        <!-- Tela 2: Formulário de Criação de Conta -->
         <div id="signup-view" class="hidden w-full h-full flex flex-col justify-center items-center p-6 bg-gray-50 dark:bg-gray-900">
             <div class="w-full max-w-sm card p-8 rounded-xl shadow-2xl">
                 <h2 class="text-2xl font-bold text-center mb-6">Criar Conta</h2>
@@ -107,10 +47,12 @@
                 <p class="text-center text-sm text-gray-500 mt-6">
                     Já tem uma conta? <button onclick="switchAuthView('login-view')" class="font-semibold text-indigo-600 hover:underline">Faça login</button>
                 </p>
+                <p class="text-center text-xs text-gray-500 mt-6">
+                <button onclick="switchAuthView('landing-view')" class="hover:underline">Voltar para o Início</button>
+                </p>
             </div>
         </div>
 
-        <!-- Tela 3: Login -->
         <div id="login-view" class="hidden w-full h-full flex flex-col justify-center items-center p-6 bg-gray-50 dark:bg-gray-900">
             <div class="w-full max-w-sm card p-8 rounded-xl shadow-2xl">
                 <h2 class="text-2xl font-bold text-center mb-6">Fazer Login</h2>
@@ -122,11 +64,14 @@
                 <div class="text-center text-sm mt-6 flex justify-between">
                     <button onclick="switchAuthView('forgot-password-view')" class="font-semibold text-indigo-600 hover:underline">Esqueci a senha</button>
                     <button onclick="switchAuthView('signup-view')" class="font-semibold text-indigo-600 hover:underline">Criar conta</button>
+                    <p class="text-center text-xs text-gray-500 mt-6">
+    
+</p>
+<button onclick="switchAuthView('landing-view')" class="hover:underline">Voltar para o Início</button>
                 </div>
             </div>
         </div>
         
-        <!-- Tela 4: Esqueci Minha Senha -->
         <div id="forgot-password-view" class="hidden w-full h-full flex flex-col justify-center items-center p-6 bg-gray-50 dark:bg-gray-900">
              <div class="w-full max-w-sm card p-8 rounded-xl shadow-2xl">
                 <h2 class="text-2xl font-bold text-center mb-2">Redefinir Senha</h2>
@@ -138,11 +83,13 @@
                 <p class="text-center text-sm text-gray-500 mt-6">
                     Lembrou a senha? <button onclick="switchAuthView('login-view')" class="font-semibold text-indigo-600 hover:underline">Faça login</button>
                 </p>
+                <p class="text-center text-xs text-gray-500 mt-6">
+    <button onclick="switchAuthView('landing-view')" class="hover:underline">Voltar para o Início</button>
+</p>
             </div>
         </div>
     </div>
 
-    <!-- Tela de Carregamento (usada após o login) -->
     <div id="loading-view" class="hidden fixed inset-0 bg-white dark:bg-gray-900 flex flex-col items-center justify-center z-[200]">
         <h1 class="text-3xl font-bold text-indigo-600 mb-4">Meu Caixa</h1>
         <p id="loading-text" class="text-gray-600 dark:text-gray-300">Carregando seus dados...</p>
@@ -152,7 +99,6 @@
         </svg>
     </div>
 
-    <!-- Container principal do aplicativo -->
     <div id="app-container" class="hidden h-full">
         <div id="notification-banner" class="fixed top-5 left-1/2 -translate-x-1/2 bg-red-500 text-white px-6 py-3 rounded-lg shadow-lg z-[100] transition-transform duration-300 transform -translate-y-20">
             <p id="notification-text"></p>
@@ -184,7 +130,7 @@
                     </div>
                     <div class="border-t border-gray-200 dark:border-gray-700 my-2"></div>
                      <div class="px-4 py-2">
-                        <p class="text-sm">Status do Plano: <span class="font-bold text-green-500">Free</span></p>
+                         <p class="text-sm">Status do Plano: <span class="font-bold text-green-500">Free</span></p>
                     </div>
                     <div class="border-t border-gray-200 dark:border-gray-700 my-2"></div>
                     <button onclick="handleLogout()" class="w-full text-left px-4 py-2 text-sm text-red-500 rounded-lg hover:bg-red-50 dark:hover:bg-red-500 dark:hover:text-white">
@@ -245,33 +191,33 @@
             </div>
             <div id="project-dashboard-view" class="hidden p-6 max-w-7xl mx-auto">
                  <div class="flex items-center mb-4 relative">
-                     <button onclick="switchView('home-view')" class="absolute left-0 p-2 text-indigo-600"><svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" /></svg></button>
-                     <h1 class="text-2xl font-bold w-full text-center">Resultados dos Projetos</h1>
+                      <button onclick="switchView('home-view')" class="absolute left-0 p-2 text-indigo-600"><svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" /></svg></button>
+                      <h1 class="text-2xl font-bold w-full text-center">Resultados dos Projetos</h1>
                  </div>
                  <div class="flex justify-center gap-2 mb-2">
-                     <button onclick="filterDashboardCharts('week')" data-period="week" class="dashboard-filter-btn period-btn bg-indigo-600 text-white px-4 py-2 rounded-full text-sm font-semibold">Semana</button>
-                     <button onclick="filterDashboardCharts('month')" data-period="month" class="dashboard-filter-btn period-btn bg-white text-gray-700 px-4 py-2 rounded-full text-sm font-semibold">Mês</button>
-                     <button onclick="filterDashboardCharts('year')" data-period="year" class="dashboard-filter-btn period-btn bg-white text-gray-700 px-4 py-2 rounded-full text-sm font-semibold">Ano</button>
+                      <button onclick="filterDashboardCharts('week')" data-period="week" class="dashboard-filter-btn period-btn bg-indigo-600 text-white px-4 py-2 rounded-full text-sm font-semibold">Semana</button>
+                      <button onclick="filterDashboardCharts('month')" data-period="month" class="dashboard-filter-btn period-btn bg-white text-gray-700 px-4 py-2 rounded-full text-sm font-semibold">Mês</button>
+                      <button onclick="filterDashboardCharts('year')" data-period="year" class="dashboard-filter-btn period-btn bg-white text-gray-700 px-4 py-2 rounded-full text-sm font-semibold">Ano</button>
                  </div>
                  <div class="flex justify-center gap-2 mb-4 border-t pt-4 mt-4">
-                     <button onclick="filterDashboardView('bars')" data-view="bars" class="dashboard-view-btn view-btn bg-indigo-600 text-white px-4 py-2 rounded-full text-sm font-semibold">Barras</button>
-                     <button onclick="filterDashboardView('pizza')" data-view="pizza" class="dashboard-view-btn view-btn bg-white text-gray-700 px-4 py-2 rounded-full text-sm font-semibold">Pizza</button>
+                      <button onclick="filterDashboardView('bars')" data-view="bars" class="dashboard-view-btn view-btn bg-indigo-600 text-white px-4 py-2 rounded-full text-sm font-semibold">Barras</button>
+                      <button onclick="filterDashboardView('pizza')" data-view="pizza" class="dashboard-view-btn view-btn bg-white text-gray-700 px-4 py-2 rounded-full text-sm font-semibold">Pizza</button>
                  </div>
                  <div id="project-charts-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
             </div>
             <div id="sector-dashboard-view" class="hidden p-6 max-w-7xl mx-auto">
                  <div class="flex items-center mb-4 relative">
-                     <button onclick="switchView('sectors-view', currentProjectId)" class="absolute left-0 p-2 text-indigo-600"><svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" /></svg></button>
-                     <h1 class="text-2xl font-bold w-full text-center">Resultados dos Setores</h1>
+                      <button onclick="switchView('sectors-view', currentProjectId)" class="absolute left-0 p-2 text-indigo-600"><svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" /></svg></button>
+                      <h1 class="text-2xl font-bold w-full text-center">Resultados dos Setores</h1>
                  </div>
                   <div class="flex justify-center gap-2 mb-2">
-                     <button onclick="filterSectorDashboardCharts('week')" data-period="week" class="sector-dashboard-filter-btn period-btn bg-indigo-600 text-white px-4 py-2 rounded-full text-sm font-semibold">Semana</button>
-                     <button onclick="filterSectorDashboardCharts('month')" data-period="month" class="sector-dashboard-filter-btn period-btn bg-white text-gray-700 px-4 py-2 rounded-full text-sm font-semibold">Mês</button>
-                     <button onclick="filterSectorDashboardCharts('year')" data-period="year" class="sector-dashboard-filter-btn period-btn bg-white text-gray-700 px-4 py-2 rounded-full text-sm font-semibold">Ano</button>
+                      <button onclick="filterSectorDashboardCharts('week')" data-period="week" class="sector-dashboard-filter-btn period-btn bg-indigo-600 text-white px-4 py-2 rounded-full text-sm font-semibold">Semana</button>
+                      <button onclick="filterSectorDashboardCharts('month')" data-period="month" class="sector-dashboard-filter-btn period-btn bg-white text-gray-700 px-4 py-2 rounded-full text-sm font-semibold">Mês</button>
+                      <button onclick="filterSectorDashboardCharts('year')" data-period="year" class="sector-dashboard-filter-btn period-btn bg-white text-gray-700 px-4 py-2 rounded-full text-sm font-semibold">Ano</button>
                  </div>
                   <div class="flex justify-center gap-2 mb-4 border-t pt-4 mt-4">
-                     <button onclick="filterSectorView('bars')" data-view="bars" class="sector-view-btn view-btn bg-indigo-600 text-white px-4 py-2 rounded-full text-sm font-semibold">Barras</button>
-                     <button onclick="filterSectorView('pizza')" data-view="pizza" class="sector-view-btn view-btn bg-white text-gray-700 px-4 py-2 rounded-full text-sm font-semibold">Pizza</button>
+                      <button onclick="filterSectorView('bars')" data-view="bars" class="sector-view-btn view-btn bg-indigo-600 text-white px-4 py-2 rounded-full text-sm font-semibold">Barras</button>
+                      <button onclick="filterSectorView('pizza')" data-view="pizza" class="sector-view-btn view-btn bg-white text-gray-700 px-4 py-2 rounded-full text-sm font-semibold">Pizza</button>
                  </div>
                  <div id="sector-charts-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"></div>
             </div>
@@ -312,11 +258,23 @@
 
         <footer id="footer-nav" class="fixed bottom-0 left-0 right-0 shadow-t-lg border-t p-2 flex justify-around items-center z-10">
             <div id="home-nav" class="w-full flex justify-around items-center">
-                 <button onclick="switchView('history-view')" class="flex flex-col items-center text-gray-500 hover:text-indigo-600"><svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" /></svg><span class="text-xs">Histórico</span></button>
-                 <button onclick="openModal('project-modal')" class="flex flex-col items-center text-gray-500 hover:text-indigo-600"><svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z" /></svg><span class="text-xs">Criar Projeto</span></button>
-                 <button onclick="showResults()" class="flex flex-col items-center text-gray-500 hover:text-indigo-600"><svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" /></svg><span class="text-xs">Resultados</span></button>
-                  <button onclick="switchView('trash-view')" class="flex flex-col items-center text-gray-500 hover:text-indigo-600"><svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg><span class="text-xs">Lixeira</span></button>
-            </div>
+    <button id="nav-history" onclick="switchView('history-view')" class="nav-btn flex flex-col items-center">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"></path></svg>
+        <span class="text-xs">Histórico</span>
+    </button>
+    <button onclick="openModal('project-modal')" class="flex flex-col items-center text-gray-500 hover:text-indigo-600">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+        <span class="text-xs">Criar Projeto</span>
+    </button>
+    <button id="nav-results" onclick="showResults()" class="nav-btn flex flex-col items-center">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
+        <span class="text-xs">Resultados</span>
+    </button>
+    <button id="nav-trash" onclick="switchView('trash-view')" class="nav-btn flex flex-col items-center">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+        <span class="text-xs">Lixeira</span>
+    </button>
+</div>
             <div id="sectors-nav" class="w-full flex justify-around items-center hidden">
                   <button onclick="switchView('history-view')" class="flex flex-col items-center text-gray-500 hover:text-indigo-600"><svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" /></svg><span class="text-xs">Histórico</span></button>
                  <button onclick="switchView('home-view')" class="flex flex-col items-center text-gray-500 hover:text-indigo-600"><svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a2 2 0 002 2h10a2 2 0 002-2V10M9 20v-6a2 2 0 012-2h2a2 2 0 012 2v6" /></svg><span class="text-xs">Home</span></button>
@@ -325,7 +283,6 @@
             </div>
         </footer>
 
-        <!-- Modals -->
         <div id="project-modal" onclick="closeModalOnOutsideClick(event)" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 hidden">
             <div class="card w-full max-w-sm p-6 rounded-xl shadow-2xl">
                 <h2 class="text-xl font-bold mb-4">Novo Projeto</h2>
@@ -368,7 +325,7 @@
                          <div class="mb-4">
                              <label for="inv-cost-description" class="block text-sm font-medium mb-1">Nome da Operação</label>
                              <input type="text" id="inv-cost-description" placeholder="Ex: Taxa de Abertura" class="w-full p-2 border rounded-lg bg-gray-50 dark:bg-gray-700">
-                        </div>
+                         </div>
                         <div class="mb-4">
                              <label for="inv-cost-date" class="block text-sm font-medium mb-1">Data</label>
                              <input type="date" id="inv-cost-date" class="w-full p-2 border rounded-lg bg-gray-50 dark:bg-gray-700">
@@ -376,7 +333,7 @@
                          <div class="mb-4">
                              <label for="inv-cost-source" class="block text-sm font-medium mb-1">Debitar da Fonte</label>
                              <select id="inv-cost-source" class="w-full p-2 border rounded-lg bg-gray-50 dark:bg-gray-700"></select>
-                        </div>
+                         </div>
                         <div class="mb-4">
                              <label for="inv-cost-amount" class="block text-sm font-medium mb-1">Valor do Custo</label>
                              <input type="number" id="inv-cost-amount" placeholder="100.00" step="0.01" class="w-full p-2 border rounded-lg bg-gray-50 dark:bg-gray-700">
@@ -403,7 +360,7 @@
                          <div>
                              <label for="transaction-date" class="block text-sm font-medium mb-1">Data</label>
                              <input type="date" id="transaction-date" class="w-full p-2 border rounded-lg bg-gray-50 dark:bg-gray-700" required>
-                        </div>
+                         </div>
                     </div>
                      <div class="mb-4">
                          <label for="transaction-description" class="block text-sm font-medium mb-1">Nome da Operação</label>
@@ -426,510 +383,6 @@
         </div>
     </div>
 
-    <!-- Firebase SDKs -->
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { 
-            getAuth, onAuthStateChanged, createUserWithEmailAndPassword, 
-            signInWithEmailAndPassword, signOut, sendPasswordResetEmail,
-            signInAnonymously
-        } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { 
-            getFirestore, doc, onSnapshot, collection, 
-            addDoc, updateDoc, deleteDoc, writeBatch, arrayUnion
-        } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-
-        // --- REFERÊNCIAS GLOBAIS ---
-        // TODO: Substitua este objeto pela configuração do seu projeto Firebase
-        const firebaseConfig = {
-            apiKey: "SUA_API_KEY",
-            authDomain: "SEU_AUTH_DOMAIN",
-            projectId: "SEU_PROJECT_ID",
-            storageBucket: "SEU_STORAGE_BUCKET",
-            messagingSenderId: "SEU_MESSAGING_SENDER_ID",
-            appId: "SEU_APP_ID"
-        };
-
-        // --- INICIALIZAÇÃO E LÓGICA DO APP ---
-
-        let app;
-        let auth;
-        let db;
-        let userId = null;
-        let localTestMode = false;
-        let unsubscribeProjects = () => {};
-        let unsubscribeSources = () => {};
-        
-        // --- LÓGICA DE TEMA (CLARO/ESCURO) ---
-        const themeToggle = document.getElementById('theme-toggle');
-        const applyTheme = (theme) => {
-            document.documentElement.classList.toggle('dark', theme === 'dark');
-        };
-        const savedTheme = localStorage.getItem('theme') || 'light';
-        applyTheme(savedTheme);
-
-        themeToggle.addEventListener('click', () => {
-            const newTheme = document.documentElement.classList.contains('dark') ? 'light' : 'dark';
-            localStorage.setItem('theme', newTheme);
-            applyTheme(newTheme);
-        });
-
-        // --- LÓGICA DE AUTENTICAÇÃO E UI ---
-        const authContainer = document.getElementById('auth-container');
-        const loadingView = document.getElementById('loading-view');
-        const appContainer = document.getElementById('app-container');
-        
-        const switchAuthView = (viewId) => {
-            ['landing-view', 'signup-view', 'login-view', 'forgot-password-view'].forEach(id => {
-                document.getElementById(id).classList.add('hidden');
-            });
-            document.getElementById(viewId).classList.remove('hidden');
-        };
-
-        const handleSignup = (email, password) => {
-            if (!auth) return;
-            createUserWithEmailAndPassword(auth, email, password)
-                .catch(error => alert(`Erro no cadastro: ${error.message}`));
-        };
-        const handleLogin = (email, password) => {
-            if (!auth) return;
-            signInWithEmailAndPassword(auth, email, password)
-                .catch(error => alert(`Erro no login: ${error.message}`));
-        };
-        const handlePasswordReset = (email) => {
-            if (!auth) return;
-            sendPasswordResetEmail(auth, email)
-                .then(() => alert('Link de redefinição enviado para o seu e-mail.'))
-                .catch(error => alert(`Erro ao enviar e-mail: ${error.message}`));
-        };
-        const handleLogout = () => {
-            if (localTestMode) {
-                window.location.reload();
-                return;
-            }
-            if (!auth) return;
-            signOut(auth).catch(error => console.error('Erro no logout:', error));
-        };
-        
-        const handleAnonymousLogin = () => {
-            if (!auth) return;
-            signInAnonymously(auth)
-                .catch(error => {
-                    console.error("Erro no login anônimo:", error);
-                    alert("Não foi possível entrar no modo demonstração. Tente novamente.");
-                });
-        };
-
-        const handleLocalTest = () => {
-            localTestMode = true;
-            userId = 'local-user'; // Placeholder user ID
-            
-            authContainer.classList.add('hidden');
-            loadingView.classList.add('hidden');
-            appContainer.classList.remove('hidden');
-            
-            document.getElementById('user-email-display').textContent = 'Usuário de Teste';
-            
-            loadDataFromLocalStorage();
-            renderAll();
-        };
-        
-        // --- LÓGICA DO FIRESTORE E DO APLICATIVO PRINCIPAL ---
-        
-        let sources = [];
-        let projects = [];
-        let activeCharts = [];
-        let currentProjectId = null;
-        let historyFilters = { period: 'week', sector: 'all', subsector: 'all' };
-        let dashboardPeriodFilter = 'week';
-        let projectDashboardViewMode = 'bars';
-        let sectorDashboardViewMode = 'bars';
-        const subsectorsBySector = { 'all': ['Todos os Subsetores'], 'Financeiro': ['Todos', 'Investimento', 'Planejamento', 'Recursos'], 'Operacional': ['Todos', 'Treinamento', 'Armazenamento', 'Produção'], 'Comercial': ['Todos', 'Marketing', 'Relacionamento', 'Vendas'] };
-
-        const formatCurrency = (value) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value || 0);
-
-        function startFirestoreListeners() {
-            if (localTestMode) return;
-            unsubscribeProjects();
-            unsubscribeSources();
-            if (!userId || !db) return;
-
-            const projectsCollectionPath = `/users/${userId}/projects`;
-            const sourcesCollectionPath = `/users/${userId}/sources`;
-
-            const projectsCollection = collection(db, projectsCollectionPath);
-            unsubscribeProjects = onSnapshot(projectsCollection, (snapshot) => {
-                projects = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                renderAll();
-                loadingView.classList.add('hidden');
-                appContainer.classList.remove('hidden');
-            });
-
-            const sourcesCollection = collection(db, sourcesCollectionPath);
-            unsubscribeSources = onSnapshot(sourcesCollection, (snapshot) => {
-                sources = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                renderAll();
-            });
-        }
-        
-        // --- FUNÇÕES DE RENDERIZAÇÃO E DADOS ---
-        const saveDataToLocalStorage = () => {
-            localStorage.setItem('projectManagerData', JSON.stringify({ sources, projects }));
-        };
-
-        const loadDataFromLocalStorage = () => {
-            try {
-                const data = JSON.parse(localStorage.getItem('projectManagerData'));
-                if (data) {
-                    sources = data.sources || [];
-                    projects = data.projects || [];
-                }
-            } catch (e) {
-                console.error("Erro ao carregar dados locais. Os dados foram resetados.", e);
-                sources = [];
-                projects = [];
-            }
-        };
-
-        const renderTotalBalance = () => { document.getElementById('total-balance').textContent = formatCurrency(sources.filter(s => !s.deleted).reduce((sum, source) => sum + parseFloat(source.balance), 0)); };
-        
-        const renderProjects = () => {
-            const carousel = document.getElementById('project-carousel');
-            carousel.innerHTML = '';
-            const activeProjects = projects.filter(p => !p.deleted);
-
-            if (activeProjects.length === 0) {
-                carousel.innerHTML = `<div class="project-card flex-shrink-0 w-full max-w-xs mx-auto p-6 snap-center"><div class="flex flex-col items-center justify-center text-center h-full"><svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 text-gray-300 dark:text-gray-600 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 13h6m-3-3v6m-9 1V7a2 2 0 012-2h6l2 2h6a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z" /></svg><h3 class="font-bold text-lg">Nenhum projeto ainda</h3><p class="text-gray-500 dark:text-gray-400">Clique em "Criar Projeto" para começar.</p></div></div>`;
-                return;
-            }
-
-            activeProjects.forEach(project => {
-                const totalRevenue = (project.transactions || []).filter(t => t.type === 'revenue').reduce((sum, t) => sum + t.amount, 0);
-                const totalCost = (project.transactions || []).filter(t => t.type === 'cost').reduce((sum, t) => sum + t.amount, 0);
-                const projectBalance = totalRevenue - totalCost;
-
-                const card = document.createElement('div');
-                let borderColorClass = 'card-neutral';
-                if (projectBalance > 0) borderColorClass = 'card-positive';
-                else if (projectBalance < 0) borderColorClass = 'card-negative';
-                
-                card.className = `project-card ${borderColorClass} flex-shrink-0 w-full max-w-xs mx-auto snap-center cursor-pointer hover:shadow-xl transition relative`;
-                card.setAttribute('onclick', `switchView('sectors-view', '${project.id}')`);
-                card.innerHTML = `
-                    <button onclick="moveItemToTrash(event, 'project', '${project.id}')" class="absolute top-2 right-2 text-gray-400 hover:text-red-500"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg></button>
-                    <h3 class="font-bold text-xl mb-2">${project.name}</h3>
-                    <div class="space-y-2 text-sm border-t pt-2 mt-2 dark:border-gray-700">
-                        <div class="flex justify-between"><span class="text-gray-500 dark:text-gray-400">Receita</span><span class="font-semibold text-green-500">${formatCurrency(totalRevenue)}</span></div>
-                        <div class="flex justify-between"><span class="text-gray-500 dark:text-gray-400">Custo</span><span class="font-semibold text-red-500">${formatCurrency(totalCost)}</span></div>
-                        <div class="flex justify-between border-t pt-2 mt-2 dark:border-gray-700"><span class="font-bold">Resultado</span><span class="font-bold ${projectBalance >= 0 ? 'text-green-500' : 'text-red-500'}">${formatCurrency(projectBalance)}</span></div>
-                    </div>`;
-                carousel.appendChild(card);
-            });
-        };
-        const renderInvestmentSources = () => {
-            const list = document.getElementById('investment-sources-list');
-            list.innerHTML = '';
-            const activeSources = sources.filter(s => !s.deleted);
-
-            if (activeSources.length === 0) {
-                list.innerHTML = `<p class="text-gray-500 dark:text-gray-400 text-center">Nenhuma fonte de investimento cadastrada.</p>`;
-                return;
-            }
-            activeSources.forEach(source => {
-                const item = document.createElement('div');
-                item.className = 'source-item';
-                item.innerHTML = `
-                    <div class="flex-grow">
-                        <p class="font-bold">${source.name}</p>
-                        <p class="text-sm text-gray-500 dark:text-gray-400">${source.type}</p>
-                    </div>
-                    <p class="font-bold text-lg ${source.balance >= 0 ? 'text-green-600' : 'text-red-600'} mr-4">${formatCurrency(source.balance)}</p>
-                    <button onclick="moveItemToTrash(null, 'source', '${source.id}')" class="text-gray-400 hover:text-red-500"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg></button>`;
-                list.appendChild(item);
-            });
-        };
-        const renderSectorIndicators = () => {
-            const project = projects.find(p => p.id === currentProjectId);
-            if (!project) return;
-
-            ['Financeiro', 'Operacional', 'Comercial'].forEach(sector => {
-                const transactions = project.transactions || [];
-                const sectorTransactions = transactions.filter(t => t.sector === sector);
-                const totalRevenue = sectorTransactions.filter(t => t.type === 'revenue').reduce((sum, t) => sum + t.amount, 0);
-                const totalCost = sectorTransactions.filter(t => t.type === 'cost').reduce((sum, t) => sum + t.amount, 0);
-                const result = totalRevenue - totalCost;
-                
-                const indicatorDiv = document.getElementById(`${sector.toLowerCase()}-indicators`);
-                if (indicatorDiv) {
-                    indicatorDiv.innerHTML = `
-                        <div class="flex justify-between"><span class="text-gray-500 dark:text-gray-400">Receita</span><span class="font-semibold text-green-500">${formatCurrency(totalRevenue)}</span></div>
-                        <div class="flex justify-between"><span class="text-gray-500 dark:text-gray-400">Custo</span><span class="font-semibold text-red-500">${formatCurrency(totalCost)}</span></div>
-                         <div class="flex justify-between border-t mt-2 pt-2 dark:border-gray-700"><span class="font-bold">Resultado</span><span class="font-bold ${result >= 0 ? 'text-green-600' : 'text-red-600'}">${formatCurrency(result)}</span></div>`;
-                }
-            });
-        };
-       
-        const destroyActiveCharts = () => { activeCharts.forEach(chart => chart.destroy()); activeCharts = []; };
-
-        function createChart(container, title, chartConfig) { const card = document.createElement('div'); card.className = 'chart-card'; card.innerHTML = `<h2>${title}</h2><canvas></canvas>`; container.appendChild(card); const canvas = card.querySelector('canvas'); if (canvas) { activeCharts.push(new Chart(canvas.getContext('2d'), chartConfig)); } }
-        
-        function renderProjectDashboardCharts(period = 'week') { destroyActiveCharts(); const container = document.getElementById('project-charts-container'); container.innerHTML = ''; const activeProjects = projects.filter(p => !p.deleted); if (projectDashboardViewMode === 'pizza') { const pieData = activeProjects.reduce((acc, project) => { const revenue = (project.transactions || []).filter(t => t.type === 'revenue' && isDateInPeriod(t.date, period)).reduce((sum, t) => sum + t.amount, 0); const cost = (project.transactions || []).filter(t => t.type === 'cost' && isDateInPeriod(t.date, period)).reduce((sum, t) => sum + t.amount, 0); if (revenue > 0) { acc.revenues.data.push(revenue); acc.revenues.labels.push(project.name); } if (cost > 0) { acc.costs.data.push(cost); acc.costs.labels.push(project.name); } return acc; }, { revenues: { labels: [], data: [] }, costs: { labels: [], data: [] } }); if (pieData.revenues.data.length > 0) createChart(container, 'Receita por Projeto', { type: 'pie', data: { labels: pieData.revenues.labels, datasets: [{ data: pieData.revenues.data, backgroundColor: ['#4CAF50', '#8BC34A', '#CDDC39', '#FFEB3B', '#FFC107'] }] }, options: { responsive: true, maintainAspectRatio: false } }); if (pieData.costs.data.length > 0) createChart(container, 'Custo por Projeto', { type: 'pie', data: { labels: pieData.costs.labels, datasets: [{ data: pieData.costs.data, backgroundColor: ['#F44336', '#E91E63', '#9C27B0', '#673AB7', '#3F51B5'] }] }, options: { responsive: true, maintainAspectRatio: false } }); } else { activeProjects.forEach(project => { const data = aggregateDataForPeriod(project.transactions || [], period); createChart(container, `Desempenho: ${project.name}`, { type: 'bar', data: { labels: data.labels, datasets: [{ label: 'Receita', data: data.revenues, backgroundColor: 'rgba(75, 192, 192, 0.6)' }, { label: 'Custo', data: data.costs, backgroundColor: 'rgba(255, 99, 132, 0.6)' }] }, options: { scales: { y: { beginAtZero: true } }, responsive: true, maintainAspectRatio: false } }); }); } }
-        
-        function renderSectorDashboardCharts(period = 'week') { destroyActiveCharts(); const container = document.getElementById('sector-charts-container'); container.innerHTML = ''; const project = projects.find(p => p.id === currentProjectId); if (!project) return; const allSubsectors = ['Investimento', 'Planejamento', 'Recursos', 'Treinamento', 'Armazenamento', 'Produção', 'Marketing', 'Relacionamento', 'Vendas']; if (sectorDashboardViewMode === 'pizza') { const pieData = allSubsectors.reduce((acc, subsector) => { const revenue = (project.transactions || []).filter(t => t.subSector === subsector && t.type === 'revenue' && isDateInPeriod(t.date, period)).reduce((sum, t) => sum + t.amount, 0); const cost = (project.transactions || []).filter(t => t.subSector === subsector && t.type === 'cost' && isDateInPeriod(t.date, period)).reduce((sum, t) => sum + t.amount, 0); if (revenue > 0) { acc.revenues.data.push(revenue); acc.revenues.labels.push(subsector); } if (cost > 0) { acc.costs.data.push(cost); acc.costs.labels.push(subsector); } return acc; }, { revenues: { labels: [], data: [] }, costs: { labels: [], data: [] } }); if (pieData.revenues.data.length > 0) createChart(container, 'Receita por Subsetor', { type: 'pie', data: { labels: pieData.revenues.labels, datasets: [{ data: pieData.revenues.data, backgroundColor: ['#4CAF50', '#8BC34A', '#CDDC39', '#FFEB3B', '#FFC107', '#FF9800', '#795548', '#607D8B', '#009688'] }] }, options: { responsive: true, maintainAspectRatio: false } }); if (pieData.costs.data.length > 0) createChart(container, 'Custo por Subsetor', { type: 'pie', data: { labels: pieData.costs.labels, datasets: [{ data: pieData.costs.data, backgroundColor: ['#F44336', '#E91E63', '#9C27B0', '#673AB7', '#3F51B5', '#2196F3', '#03A9F4', '#00BCD4', '#f43f5e'] }] }, options: { responsive: true, maintainAspectRatio: false } }); } else { allSubsectors.forEach(subsector => { const transactions = (project.transactions || []).filter(t => t.subSector === subsector && isDateInPeriod(t.date, period)); const data = aggregateDataForPeriod(transactions, period); createChart(container, `Desempenho: ${subsector}`, { type: 'bar', data: { labels: data.labels, datasets: [{ label: 'Receita', data: data.revenues, backgroundColor: 'rgba(75, 192, 192, 0.6)' }, { label: 'Custo', data: data.costs, backgroundColor: 'rgba(255, 99, 132, 0.6)' }] }, options: { scales: { y: { beginAtZero: true } }, responsive: true, maintainAspectRatio: false } }); }); } }
-        
-        function isDateInPeriod(dateString, period) { const date = new Date(dateString); const now = new Date(); let startDate = new Date(); if (period === 'week') { startDate.setDate(now.getDate() - now.getDay()); startDate.setHours(0, 0, 0, 0); } else if (period === 'month') { startDate = new Date(now.getFullYear(), now.getMonth(), 1); } else { startDate = new Date(now.getFullYear(), 0, 1); } return date >= startDate; }
-        
-        function aggregateDataForPeriod(transactions, period) { const result = { labels: [], revenues: [], costs: [] }; const filtered = transactions.filter(t => isDateInPeriod(t.date, period)); if (period === 'week') { result.labels = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb']; result.revenues = Array(7).fill(0); result.costs = Array(7).fill(0); filtered.forEach(t => { const day = new Date(t.date).getUTCDay(); if (t.type === 'revenue') result.revenues[day] += t.amount; else result.costs[day] += t.amount; }); } else if (period === 'month') { const daysInMonth = new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).getDate(); result.labels = Array.from({ length: daysInMonth }, (_, i) => i + 1); result.revenues = Array(daysInMonth).fill(0); result.costs = Array(daysInMonth).fill(0); filtered.forEach(t => { const day = new Date(t.date).getUTCDate() - 1; if (t.type === 'revenue') result.revenues[day] += t.amount; else result.costs[day] += t.amount; }); } else { result.labels = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez']; result.revenues = Array(12).fill(0); result.costs = Array(12).fill(0); filtered.forEach(t => { const month = new Date(t.date).getUTCMonth(); if (t.type === 'revenue') result.revenues[month] += t.amount; else result.costs[month] += t.amount; }); } return result; }
-        
-        const openModal = (modalId) => document.getElementById(modalId).classList.remove('hidden'); 
-        const closeModal = (modalId) => document.getElementById(modalId).classList.add('hidden'); 
-        
-        function closeModalOnOutsideClick(event) { if (event.target.id.endsWith('-modal')) { closeModal(event.target.id); } }
-        
-        const openTransactionModal = (sector, subSector) => { const project = projects.find(p => p.id === currentProjectId); if (!project) return; const form = document.getElementById('transaction-form'); form.reset(); document.getElementById('transaction-project-name').textContent = `${project.name} / ${sector} / ${subSector}`; form.elements['transaction-sector'].value = sector; form.elements['transaction-subsector'].value = subSector; form.elements['transaction-date'].valueAsDate = new Date(); const sourceSelect = document.getElementById('transaction-source'); sourceSelect.innerHTML = ''; if (sources.filter(s => !s.deleted).length === 0) { sourceSelect.innerHTML = '<option value="" disabled selected>Nenhuma fonte criada</option>'; } else { sources.filter(s => !s.deleted).forEach(source => { const option = document.createElement('option'); option.value = source.id; option.textContent = `${source.name} (${source.type})`; sourceSelect.appendChild(option); }); } openModal('transaction-modal'); };
-        
-        const openInvestmentModal = () => { const project = projects.find(p => p.id === currentProjectId); if (!project) { return alert("Por favor, selecione um projeto na tela inicial antes de realizar uma ação de investimento."); } document.getElementById('investment-form').reset(); document.getElementById('investment-project-name').textContent = `${project.name} / Financeiro / Investimento`; const sourceSelect = document.getElementById('inv-cost-source'); sourceSelect.innerHTML = ''; if (sources.filter(s => !s.deleted).length === 0) { sourceSelect.innerHTML = '<option value="" disabled selected>Nenhuma fonte criada</option>'; } else { sources.filter(s => !s.deleted).forEach(source => { const option = document.createElement('option'); option.value = source.id; option.textContent = `${source.name} (${source.type})`; sourceSelect.appendChild(option); }); } document.getElementById('inv-cost-date').valueAsDate = new Date(); updateInvestmentFormUI(); openModal('investment-modal'); };
-        
-        const updateInvestmentFormUI = () => { const actionType = document.getElementById('investment-action-type').value; const sourceFields = document.getElementById('investment-source-fields'); const costFields = document.getElementById('investment-cost-fields'); if (actionType === 'source') { sourceFields.classList.remove('hidden'); costFields.classList.add('hidden'); } else { sourceFields.classList.add('hidden'); costFields.classList.remove('hidden'); } };
-        
-        const switchView = (viewId, projectId = null) => { if (['home-view', 'project-dashboard-view', 'history-view', 'trash-view'].includes(viewId)) { currentProjectId = null; } if (projectId) currentProjectId = projectId; ['home-view', 'project-dashboard-view', 'sector-dashboard-view', 'sectors-view', 'history-view', 'trash-view'].forEach(id => { const el = document.getElementById(id); if (el) el.classList.add('hidden'); }); const viewToShow = document.getElementById(viewId); if (!viewToShow) { console.error(`A view com o ID "${viewId}" não foi encontrada.`); return switchView('home-view'); } viewToShow.classList.remove('hidden'); const footer = document.getElementById('footer-nav'); const homeNav = document.getElementById('home-nav'); const sectorsNav = document.getElementById('sectors-nav'); if (viewId === 'home-view') { footer.classList.remove('hidden'); homeNav.classList.remove('hidden'); sectorsNav.classList.add('hidden'); } else if (viewId === 'sectors-view') { footer.classList.remove('hidden'); homeNav.classList.add('hidden'); sectorsNav.classList.remove('hidden'); } else { footer.classList.add('hidden'); } destroyActiveCharts(); if (viewId === 'project-dashboard-view') renderProjectDashboardCharts(dashboardPeriodFilter); if (viewId === 'sector-dashboard-view') renderSectorDashboardCharts(dashboardPeriodFilter); if (viewId === 'history-view') { populateFilters(); renderHistory(); } if (viewId === 'trash-view') { renderTrash(); } if (viewId === 'sectors-view') { const project = projects.find(p => p.id === currentProjectId); if (project) { document.getElementById('sectors-project-name').textContent = project.name; renderSectorIndicators(); } } };
-        
-        const showResults = () => { if (currentProjectId) { switchView('sector-dashboard-view'); } else { switchView('project-dashboard-view'); } };
-        
-        const filterDashboardCharts = (period) => { dashboardPeriodFilter = period; document.querySelectorAll('.dashboard-filter-btn').forEach(btn => { const btnPeriod = btn.getAttribute('data-period'); btn.classList.toggle('bg-indigo-600', btnPeriod === period); btn.classList.toggle('text-white', btnPeriod === period); btn.classList.toggle('bg-white', btnPeriod !== period); btn.classList.toggle('text-gray-700', btnPeriod !== period); }); renderProjectDashboardCharts(period); };
-        
-        const filterSectorDashboardCharts = (period) => { dashboardPeriodFilter = period; document.querySelectorAll('.sector-dashboard-filter-btn').forEach(btn => { const btnPeriod = btn.getAttribute('data-period'); btn.classList.toggle('bg-indigo-600', btnPeriod === period); btn.classList.toggle('text-white', btnPeriod === period); btn.classList.toggle('bg-white', btnPeriod !== period); btn.classList.toggle('text-gray-700', btnPeriod !== period); }); renderSectorDashboardCharts(period); };
-        
-        const filterDashboardView = (mode) => { projectDashboardViewMode = mode; document.querySelectorAll('.dashboard-view-btn').forEach(btn => { const btnView = btn.getAttribute('data-view'); btn.classList.toggle('bg-indigo-600', btnView === mode); btn.classList.toggle('text-white', btnView === mode); btn.classList.toggle('bg-white', btnView !== mode); btn.classList.toggle('text-gray-700', btnView !== mode); }); renderProjectDashboardCharts(dashboardPeriodFilter); };
-        
-        const filterSectorView = (mode) => { sectorDashboardViewMode = mode; document.querySelectorAll('.sector-view-btn').forEach(btn => { const btnView = btn.getAttribute('data-view'); btn.classList.toggle('bg-indigo-600', btnView === mode); btn.classList.toggle('text-white', btnView === mode); btn.classList.toggle('bg-white', btnView !== mode); btn.classList.toggle('text-gray-700', btnView !== mode); }); renderSectorDashboardCharts(dashboardPeriodFilter); };
-        
-        const filterHistoryPeriod = (period) => { historyFilters.period = period; document.querySelectorAll('.history-filter-btn.period-btn').forEach(btn => { const btnPeriod = btn.getAttribute('data-period'); btn.classList.toggle('bg-indigo-600', btnPeriod === period); btn.classList.toggle('text-white', btnPeriod === period); btn.classList.toggle('bg-white', btnPeriod !== period); btn.classList.toggle('text-gray-700', btnPeriod !== period); }); renderHistory(); };
-        
-        const populateFilters = () => { const sectorSelect = document.getElementById('sector-filter'); sectorSelect.innerHTML = '<option value="all">Todos os Setores</option>'; Object.keys(subsectorsBySector).filter(s => s !== 'all').forEach(sector => { sectorSelect.innerHTML += `<option value="${sector}">${sector}</option>`; }); sectorSelect.value = historyFilters.sector; updateSubsectorFilter(); };
-        
-        const updateSubsectorFilter = () => { const sector = document.getElementById('sector-filter').value; const subsectorSelect = document.getElementById('subsector-filter'); subsectorSelect.innerHTML = ''; (subsectorsBySector[sector] || []).forEach(sub => { const value = sub.toLowerCase().includes('todos') ? 'all' : sub; subsectorSelect.innerHTML += `<option value="${value}">${sub}</option>`; }); subsectorSelect.value = historyFilters.subsector; };
-        
-        async function moveItemToTrash(event, type, id) { if (event) event.stopPropagation(); if(localTestMode){if(type==='project'){const project=projects.find(p=>p.id===id);if(project)project.deleted=true}else if(type==='source'){const source=sources.find(s=>s.id===id);if(source)source.deleted=true}saveDataToLocalStorage();renderAll();return}if(!userId)return;const collectionName=type==='project'?'projects':'sources';const docRef=doc(db,`users/${userId}/${collectionName}`,id);try{await updateDoc(docRef,{deleted:true})}catch(error){console.error(`Erro ao mover ${type} para a lixeira:`,error)}}
-        
-        async function restoreItem(type, id) { if(localTestMode){if(type==='project'){const project=projects.find(p=>p.id===id);if(project)project.deleted=false}else if(type==='source'){const source=sources.find(s=>s.id===id);if(source)source.deleted=false}saveDataToLocalStorage();renderAll();renderTrash();return}if(!userId)return;const collectionName=type==='project'?'projects':'sources';const docRef=doc(db,`users/${userId}/${collectionName}`,id);try{await updateDoc(docRef,{deleted:false})}catch(error){console.error(`Erro ao restaurar ${type}:`,error)}}
-        
-        function confirmDeletePermanently(type, id) { const item = type === 'project' ? projects.find(p => p.id === id) : sources.find(s => s.id === id); if (!item) return; if (confirm(`EXCLUIR PERMANENTEMENTE "${item.name}"? Esta ação é irreversível.`)) { deleteItemPermanently(type, id); } }
-        
-        async function deleteItemPermanently(type, id) { if(localTestMode){if(type==='project'){projects=projects.filter(p=>p.id!==id)}else if(type==='source'){sources=sources.filter(s=>s.id!==id)}saveDataToLocalStorage();renderAll();renderTrash();return}if(!userId)return;const collectionName=type==='project'?'projects':'sources';const docRef=doc(db,`users/${userId}/${collectionName}`,id);try{await deleteDoc(docRef)}catch(error){console.error(`Erro ao excluir ${type} permanentemente:`,error)}}
-        
-        function confirmClearTrash() { if (confirm("Tem certeza que deseja esvaziar a lixeira? Todos os itens serão excluídos permanentemente.")) { clearTrash(); } }
-        
-        async function clearTrash() { if(localTestMode){projects=projects.filter(p=>!p.deleted);sources=sources.filter(s=>!s.deleted);saveDataToLocalStorage();renderAll();renderTrash();return}if(!userId)return;const batch=writeBatch(db);projects.filter(p=>p.deleted).forEach(p=>{const docRef=doc(db,`users/${userId}/projects`,p.id);batch.delete(docRef)});sources.filter(s=>s.deleted).forEach(s=>{const docRef=doc(db,`users/${userId}/sources`,s.id);batch.delete(docRef)});try{await batch.commit()}catch(error){console.error("Erro ao esvaziar a lixeira:",error)}}
-        
-        const renderAll = () => { renderTotalBalance(); renderProjects(); renderInvestmentSources(); if (currentProjectId) { renderSectorIndicators(); } };
-        
-        const renderHistory = () => { const list = document.getElementById('history-list'); if (!list) return; list.innerHTML = ''; let allTransactions = []; projects.filter(p => !p.deleted).forEach(p => { (p.transactions || []).forEach(t => { allTransactions.push({ ...t, projectName: p.name }); }); }); let filteredTransactions = allTransactions.filter(t => isDateInPeriod(t.date, historyFilters.period)); if (historyFilters.sector !== 'all') { filteredTransactions = filteredTransactions.filter(t => t.sector === historyFilters.sector); } if (historyFilters.subsector !== 'all') { filteredTransactions = filteredTransactions.filter(t => t.subSector === historyFilters.subsector); } filteredTransactions.sort((a, b) => new Date(b.date) - new Date(a.date)); if (filteredTransactions.length === 0) { list.innerHTML = '<p class="text-gray-500 dark:text-gray-400 text-center col-span-full">Nenhuma operação encontrada.</p>'; return; } filteredTransactions.forEach(t => { const item = document.createElement('div'); const isRevenue = t.type === 'revenue'; item.className = `history-item ${isRevenue ? "history-item-revenue" : "history-item-cost"}`; item.innerHTML = `<div class="flex-grow pr-4"><p class="font-bold">${t.description}</p><p class="text-sm text-gray-500 dark:text-gray-400">${t.projectName} - ${new Date(t.date).toLocaleDateString("pt-BR")}</p><p class="text-xs text-gray-400 dark:text-gray-500">${t.sector} / ${t.subSector}</p></div><p class="font-bold text-lg whitespace-nowrap ${isRevenue ? "text-green-600" : "text-red-600"}">${isRevenue ? "+" : "-"} ${formatCurrency(t.amount)}</p>`; list.appendChild(item); }); };
-        
-        const renderTrash = () => { const deletedProjectsList = document.getElementById('deleted-projects-list'); const deletedSourcesList = document.getElementById('deleted-sources-list'); deletedProjectsList.innerHTML = ''; deletedSourcesList.innerHTML = ''; const deletedProjects = projects.filter(p => p.deleted); const deletedSources = sources.filter(s => s.deleted); if (deletedProjects.length === 0) { deletedProjectsList.innerHTML = '<p class="text-gray-500 dark:text-gray-400 text-center">Nenhum projeto na lixeira.</p>'; } else { deletedProjects.forEach(p => { const item = document.createElement('div'); item.className = 'trash-item'; item.innerHTML = `<div class="flex-grow"><p class="font-bold">${p.name}</p></div><div class="flex gap-2"><button onclick="restoreItem('project', '${p.id}')" class="text-blue-500 hover:text-blue-700">Restaurar</button><button onclick="confirmDeletePermanently('project', '${p.id}')" class="text-red-500 hover:text-red-700">Excluir</button></div>`; deletedProjectsList.appendChild(item); }); } if (deletedSources.length === 0) { deletedSourcesList.innerHTML = '<p class="text-gray-500 dark:text-gray-400 text-center">Nenhuma fonte na lixeira.</p>'; } else { deletedSources.forEach(s => { const item = document.createElement('div'); item.className = 'trash-item'; item.innerHTML = `<div class="flex-grow"><p class="font-bold">${s.name}</p><p class="text-sm text-gray-500 dark:text-gray-400">${s.type}</p></div><div class="flex gap-2"><button onclick="restoreItem('source', '${s.id}')" class="text-blue-500 hover:text-blue-700">Restaurar</button><button onclick="confirmDeletePermanently('source', '${s.id}')" class="text-red-500 hover:text-red-700">Excluir</button></div>`; deletedSourcesList.appendChild(item); }); } };
-
-        // --- INICIALIZAÇÃO GERAL ---
-        document.addEventListener('DOMContentLoaded', () => {
-
-            if (firebaseConfig.apiKey === "SUA_API_KEY") {
-                document.getElementById('landing-buttons').classList.add('hidden');
-                document.getElementById('firebase-config-error').classList.remove('hidden');
-                // We show the local test button even if firebase is not configured
-                const localTestButton = document.createElement('button');
-                localTestButton.onclick = handleLocalTest;
-                localTestButton.className = "w-full text-sm text-gray-500 dark:text-gray-400 font-semibold py-2 px-4 rounded-lg hover:underline";
-                localTestButton.textContent = "Entrar sem Login (Teste Local)";
-                document.getElementById('firebase-config-error').appendChild(localTestButton);
-                return;
-            }
-
-            // Inicializa o Firebase
-            app = initializeApp(firebaseConfig);
-            auth = getAuth(app);
-            db = getFirestore(app);
-
-            // Inicia o listener de autenticação
-            onAuthStateChanged(auth, user => {
-                if (user) {
-                    userId = user.uid;
-                    authContainer.classList.add('hidden');
-                    loadingView.classList.remove('hidden');
-                    document.getElementById('user-email-display').textContent = user.isAnonymous ? 'Modo Demonstração' : user.email;
-                    startFirestoreListeners();
-                } else {
-                    userId = null;
-                    unsubscribeProjects();
-                    unsubscribeSources();
-                    appContainer.classList.add('hidden');
-                    loadingView.classList.add('hidden');
-                    authContainer.classList.remove('hidden');
-                    switchAuthView('landing-view');
-                }
-            });
-
-            // --- LISTENERS DE EVENTOS DA UI ---
-            document.getElementById('profile-button').addEventListener('click', () => { document.getElementById('profile-menu').classList.toggle('hidden') });
-            document.addEventListener('click', e => {
-                const menu = document.getElementById('profile-menu');
-                const button = document.getElementById('profile-button');
-                if (!menu.classList.contains('hidden') && !button.contains(e.target) && !menu.contains(e.target)) {
-                    menu.classList.add('hidden');
-                }
-            });
-
-            // --- FORM SUBMISSIONS ---
-            document.getElementById('project-form').addEventListener('submit', async (e) => {
-                e.preventDefault();
-                const projectName = e.target.elements['project-name'].value;
-                if (!projectName) return;
-                
-                if (localTestMode) {
-                    projects.push({ id: `proj_${Date.now()}`, name: projectName, transactions: [], deleted: false });
-                    saveDataToLocalStorage();
-                    renderAll();
-                } else {
-                    if (!userId) return;
-                    const projectsCollectionPath = `/users/${userId}/projects`;
-                    try {
-                        await addDoc(collection(db, projectsCollectionPath), { name: projectName, transactions: [], deleted: false });
-                    } catch (error) { console.error("Erro ao criar projeto:", error); }
-                }
-                closeModal('project-modal');
-                e.target.reset();
-            });
-
-            document.getElementById('investment-action-type').addEventListener('change', updateInvestmentFormUI);
-
-            document.getElementById('investment-form').addEventListener('submit', async (e) => {
-                e.preventDefault();
-                const form = e.target;
-                const actionType = form.elements['investment-action-type'].value;
-                const project = projects.find(p => p.id === currentProjectId);
-                if (!project) return;
-
-                if (localTestMode) {
-                     if (actionType === 'source') {
-                        const name = form.elements['inv-source-name'].value;
-                        const type = form.elements['inv-source-type'].value;
-                        const balance = parseFloat(form.elements['inv-source-balance'].value);
-                        if (!name || !type || isNaN(balance)) return;
-                        const newSource = { id: `src_${Date.now()}`, name, type, balance, deleted: false };
-                        sources.push(newSource);
-                        project.transactions.push({ type: 'revenue', description: `Nova Fonte: ${name}`, amount: balance, sector: 'Financeiro', subSector: 'Investimento', sourceId: newSource.id, date: new Date().toISOString().split('T')[0] });
-                    } else {
-                        const sourceId = form.elements['inv-cost-source'].value;
-                        const source = sources.find(s => s.id === sourceId);
-                        if (!sourceId || !source) return;
-                        const amount = parseFloat(form.elements['inv-cost-amount'].value);
-                        source.balance -= amount;
-                        project.transactions.push({ type: 'cost', description: form.elements['inv-cost-description'].value, amount: amount, sector: 'Financeiro', subSector: 'Investimento', sourceId: sourceId, date: form.elements['inv-cost-date'].value });
-                    }
-                    saveDataToLocalStorage();
-                    renderAll();
-                } else {
-                     if (!userId) return;
-                     if (actionType === 'source') {
-                        const name = form.elements['inv-source-name'].value;
-                        const type = form.elements['inv-source-type'].value;
-                        const balance = parseFloat(form.elements['inv-source-balance'].value);
-                        if (!name || !type || isNaN(balance)) return;
-
-                        const sourcesCollectionPath = `/users/${userId}/sources`;
-                        const newSourceRef = await addDoc(collection(db, sourcesCollectionPath), { name, type, balance, deleted: false });
-
-                        const projectDocRef = doc(db, `users/${userId}/projects`, project.id);
-                        await updateDoc(projectDocRef, {
-                            transactions: arrayUnion({ type: 'revenue', description: `Nova Fonte: ${name}`, amount: balance, sector: 'Financeiro', subSector: 'Investimento', sourceId: newSourceRef.id, date: new Date().toISOString().split('T')[0] })
-                        });
-                    } else { // 'cost'
-                        const sourceId = form.elements['inv-cost-source'].value;
-                        const source = sources.find(s => s.id === sourceId);
-                        if (!sourceId || !source) return;
-
-                        const amount = parseFloat(form.elements['inv-cost-amount'].value);
-                        const newBalance = source.balance - amount;
-                        
-                        const sourceDocRef = doc(db, `users/${userId}/sources`, sourceId);
-                        await updateDoc(sourceDocRef, { balance: newBalance });
-                        
-                        const projectDocRef = doc(db, `users/${userId}/projects`, project.id);
-                        await updateDoc(projectDocRef, {
-                            transactions: arrayUnion({ type: 'cost', description: form.elements['inv-cost-description'].value, amount: amount, sector: 'Financeiro', subSector: 'Investimento', sourceId: sourceId, date: form.elements['inv-cost-date'].value })
-                        });
-                    }
-                }
-                closeModal('investment-modal');
-            });
-
-            document.getElementById('transaction-form').addEventListener('submit', async (e) => {
-                e.preventDefault();
-                const form = e.target;
-                const project = projects.find(p => p.id === currentProjectId);
-                if (!project) return;
-                
-                const sourceId = form.elements['transaction-source'].value;
-                const source = sources.find(s => s.id === sourceId);
-                if (!source) return;
-
-                const amount = parseFloat(form.elements['transaction-amount'].value);
-                const type = form.elements['transaction-type'].value;
-                const newBalance = source.balance + (type === 'revenue' ? amount : -amount);
-                
-                if (localTestMode) {
-                    source.balance = newBalance;
-                    project.transactions.push({
-                        type: type,
-                        description: form.elements['transaction-description'].value,
-                        amount: amount,
-                        sector: form.elements['transaction-sector'].value,
-                        subSector: form.elements['transaction-subsector'].value,
-                        sourceId: sourceId,
-                        date: form.elements['transaction-date'].value
-                    });
-                    saveDataToLocalStorage();
-                    renderAll();
-                } else {
-                    if (!userId) return console.error('Usuário não logado.');
-                    const sourceDocRef = doc(db, `users/${userId}/sources`, sourceId);
-                    await updateDoc(sourceDocRef, { balance: newBalance });
-
-                    const projectDocRef = doc(db, `users/${userId}/projects`, project.id);
-                    await updateDoc(projectDocRef, {
-                        transactions: arrayUnion({
-                            type: type,
-                            description: form.elements['transaction-description'].value,
-                            amount: amount,
-                            sector: form.elements['transaction-sector'].value,
-                            subSector: form.elements['transaction-subsector'].value,
-                            sourceId: sourceId,
-                            date: form.elements['transaction-date'].value
-                        })
-                    });
-                }
-
-                closeModal('transaction-modal');
-            });
-
-            // --- FILTER LISTENERS ---
-            document.getElementById('sector-filter').addEventListener('change', (e) => {
-                historyFilters.sector = e.target.value;
-                historyFilters.subsector = 'all'; 
-                updateSubsectorFilter();
-                renderHistory();
-            });
-            document.getElementById('subsector-filter').addEventListener('change', (e) => {
-                historyFilters.subsector = e.target.value;
-                renderHistory();
-            });
-        });
-
-        window.switchAuthView = switchAuthView;
-        window.handleLogout = handleLogout;
-        window.handleAnonymousLogin = handleAnonymousLogin;
-        window.handleLocalTest = handleLocalTest;
-        window.switchView=switchView;window.openModal=openModal;window.closeModal=closeModal;window.closeModalOnOutsideClick=closeModalOnOutsideClick;window.openTransactionModal=openTransactionModal;window.openInvestmentModal=openInvestmentModal;window.showResults=showResults;window.filterDashboardCharts=filterDashboardCharts;window.filterDashboardView=filterDashboardView;window.filterSectorDashboardCharts=filterSectorDashboardCharts;window.filterSectorView=filterSectorView;window.filterHistoryPeriod=filterHistoryPeriod;window.moveItemToTrash=moveItemToTrash;window.restoreItem=restoreItem;window.confirmDeletePermanently=confirmDeletePermanently;window.confirmClearTrash=confirmClearTrash;
-    </script>
+    <script type="module" src="scripts.js"></script>
 </body>
 </html>
-"
-
