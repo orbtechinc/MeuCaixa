@@ -70,7 +70,7 @@
         <div id="landing-view" class="w-full h-full flex flex-col justify-center items-center p-6 text-center bg-gray-50 dark:bg-gray-900">
             <h1 class="text-4xl md:text-5xl font-extrabold text-indigo-600 mb-4">Meu Caixa</h1>
             <p class="text-lg md:text-xl text-gray-600 dark:text-gray-300 max-w-2xl mb-8">O controle financeiro dos seus projetos, simplificado. Acompanhe receitas, custos e resultados em tempo real, do seu celular ou desktop.</p>
-            <div class="space-y-4 w-full max-w-xs">
+            <div id="landing-buttons" class="space-y-4 w-full max-w-xs">
                 <button onclick="switchAuthView('signup-view')" class="w-full bg-indigo-600 text-white font-bold py-3 px-6 rounded-lg shadow-lg hover:bg-indigo-700 transition-transform transform hover:scale-105">
                     Criar Minha Conta Grátis
                 </button>
@@ -80,6 +80,18 @@
                 <button onclick="handleAnonymousLogin()" class="w-full text-sm text-gray-500 dark:text-gray-400 font-semibold py-2 px-4 rounded-lg hover:underline">
                     Continuar para demonstração
                 </button>
+                <button onclick="handleLocalTest()" class="w-full text-sm text-gray-500 dark:text-gray-400 font-semibold py-2 px-4 rounded-lg hover:underline">
+                    Entrar sem Login (Teste Local)
+                </button>
+            </div>
+             <div id="firebase-config-error" class="hidden w-full max-w-lg text-center p-6 bg-red-100 dark:bg-red-800 border border-red-400 dark:border-red-600 rounded-lg">
+                <h2 class="text-2xl font-bold text-red-800 dark:text-red-200 mb-4">Configuração Incompleta</h2>
+                <p class="text-red-700 dark:text-red-300">
+                    Para usar o aplicativo com login, você precisa adicionar as credenciais do seu projeto Firebase no código.
+                </p>
+                <p class="mt-4 text-sm text-gray-600 dark:text-gray-400">
+                    Procure pelo objeto <code>firebaseConfig</code> no arquivo HTML e substitua os valores de exemplo ("SUA_API_KEY", etc.) pelas chaves reais do seu projeto. Você ainda pode usar o "Teste Local".
+                </p>
             </div>
         </div>
 
@@ -437,14 +449,17 @@
             messagingSenderId: "SEU_MESSAGING_SENDER_ID",
             appId: "SEU_APP_ID"
         };
-        const app = initializeApp(firebaseConfig);
-        const auth = getAuth(app);
-        const db = getFirestore(app);
 
+        // --- INICIALIZAÇÃO E LÓGICA DO APP ---
+
+        let app;
+        let auth;
+        let db;
         let userId = null;
+        let localTestMode = false;
         let unsubscribeProjects = () => {};
         let unsubscribeSources = () => {};
-
+        
         // --- LÓGICA DE TEMA (CLARO/ESCURO) ---
         const themeToggle = document.getElementById('theme-toggle');
         const applyTheme = (theme) => {
@@ -471,68 +486,54 @@
             document.getElementById(viewId).classList.remove('hidden');
         };
 
-        onAuthStateChanged(auth, user => {
-            if (user) { // Se houver qualquer usuário (autenticado ou anônimo)
-                userId = user.uid;
-                authContainer.classList.add('hidden');
-                loadingView.classList.remove('hidden');
-                
-                if (user.isAnonymous) {
-                    document.getElementById('user-email-display').textContent = 'Modo Demonstração';
-                } else {
-                    document.getElementById('user-email-display').textContent = user.email;
-                }
-
-                startFirestoreListeners();
-            } else { // Se não há usuário
-                userId = null;
-                unsubscribeProjects();
-                unsubscribeSources();
-                appContainer.classList.add('hidden');
-                loadingView.classList.add('hidden');
-                authContainer.classList.remove('hidden');
-                switchAuthView('landing-view');
-            }
-        });
-        
         const handleSignup = (email, password) => {
+            if (!auth) return;
             createUserWithEmailAndPassword(auth, email, password)
                 .catch(error => alert(`Erro no cadastro: ${error.message}`));
         };
         const handleLogin = (email, password) => {
+            if (!auth) return;
             signInWithEmailAndPassword(auth, email, password)
                 .catch(error => alert(`Erro no login: ${error.message}`));
         };
         const handlePasswordReset = (email) => {
+            if (!auth) return;
             sendPasswordResetEmail(auth, email)
                 .then(() => alert('Link de redefinição enviado para o seu e-mail.'))
                 .catch(error => alert(`Erro ao enviar e-mail: ${error.message}`));
         };
         const handleLogout = () => {
+            if (localTestMode) {
+                window.location.reload();
+                return;
+            }
+            if (!auth) return;
             signOut(auth).catch(error => console.error('Erro no logout:', error));
         };
         
         const handleAnonymousLogin = () => {
+            if (!auth) return;
             signInAnonymously(auth)
                 .catch(error => {
                     console.error("Erro no login anônimo:", error);
                     alert("Não foi possível entrar no modo demonstração. Tente novamente.");
                 });
         };
-        
-        document.getElementById('signup-form').addEventListener('submit', (e) => {
-            e.preventDefault();
-            handleSignup(e.target.elements['signup-email'].value, e.target.elements['signup-password'].value);
-        });
-        document.getElementById('login-form').addEventListener('submit', (e) => {
-            e.preventDefault();
-            handleLogin(e.target.elements['login-email'].value, e.target.elements['login-password'].value);
-        });
-        document.getElementById('forgot-password-form').addEventListener('submit', (e) => {
-            e.preventDefault();
-            handlePasswordReset(e.target.elements['forgot-email'].value);
-        });
 
+        const handleLocalTest = () => {
+            localTestMode = true;
+            userId = 'local-user'; // Placeholder user ID
+            
+            authContainer.classList.add('hidden');
+            loadingView.classList.add('hidden');
+            appContainer.classList.remove('hidden');
+            
+            document.getElementById('user-email-display').textContent = 'Usuário de Teste';
+            
+            loadDataFromLocalStorage();
+            renderAll();
+        };
+        
         // --- LÓGICA DO FIRESTORE E DO APLICATIVO PRINCIPAL ---
         
         let sources = [];
@@ -548,9 +549,10 @@
         const formatCurrency = (value) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value || 0);
 
         function startFirestoreListeners() {
+            if (localTestMode) return;
             unsubscribeProjects();
             unsubscribeSources();
-            if (!userId) return;
+            if (!userId || !db) return;
 
             const projectsCollectionPath = `/users/${userId}/projects`;
             const sourcesCollectionPath = `/users/${userId}/sources`;
@@ -570,7 +572,25 @@
             });
         }
         
-        // --- FUNÇÕES DE RENDERIZAÇÃO ---
+        // --- FUNÇÕES DE RENDERIZAÇÃO E DADOS ---
+        const saveDataToLocalStorage = () => {
+            localStorage.setItem('projectManagerData', JSON.stringify({ sources, projects }));
+        };
+
+        const loadDataFromLocalStorage = () => {
+            try {
+                const data = JSON.parse(localStorage.getItem('projectManagerData'));
+                if (data) {
+                    sources = data.sources || [];
+                    projects = data.projects || [];
+                }
+            } catch (e) {
+                console.error("Erro ao carregar dados locais. Os dados foram resetados.", e);
+                sources = [];
+                projects = [];
+            }
+        };
+
         const renderTotalBalance = () => { document.getElementById('total-balance').textContent = formatCurrency(sources.filter(s => !s.deleted).reduce((sum, source) => sum + parseFloat(source.balance), 0)); };
         
         const renderProjects = () => {
@@ -690,17 +710,17 @@
         
         const updateSubsectorFilter = () => { const sector = document.getElementById('sector-filter').value; const subsectorSelect = document.getElementById('subsector-filter'); subsectorSelect.innerHTML = ''; (subsectorsBySector[sector] || []).forEach(sub => { const value = sub.toLowerCase().includes('todos') ? 'all' : sub; subsectorSelect.innerHTML += `<option value="${value}">${sub}</option>`; }); subsectorSelect.value = historyFilters.subsector; };
         
-        async function moveItemToTrash(event, type, id) { if (event) event.stopPropagation(); if (!userId) return; const collectionName = type === 'project' ? 'projects' : 'sources'; const docRef = doc(db, `users/${userId}/${collectionName}`, id); try { await updateDoc(docRef, { deleted: true }); } catch (error) { console.error(`Erro ao mover ${type} para a lixeira:`, error); } }
+        async function moveItemToTrash(event, type, id) { if (event) event.stopPropagation(); if(localTestMode){if(type==='project'){const project=projects.find(p=>p.id===id);if(project)project.deleted=true}else if(type==='source'){const source=sources.find(s=>s.id===id);if(source)source.deleted=true}saveDataToLocalStorage();renderAll();return}if(!userId)return;const collectionName=type==='project'?'projects':'sources';const docRef=doc(db,`users/${userId}/${collectionName}`,id);try{await updateDoc(docRef,{deleted:true})}catch(error){console.error(`Erro ao mover ${type} para a lixeira:`,error)}}
         
-        async function restoreItem(type, id) { if (!userId) return; const collectionName = type === 'project' ? 'projects' : 'sources'; const docRef = doc(db, `users/${userId}/${collectionName}`, id); try { await updateDoc(docRef, { deleted: false }); } catch (error) { console.error(`Erro ao restaurar ${type}:`, error); } }
+        async function restoreItem(type, id) { if(localTestMode){if(type==='project'){const project=projects.find(p=>p.id===id);if(project)project.deleted=false}else if(type==='source'){const source=sources.find(s=>s.id===id);if(source)source.deleted=false}saveDataToLocalStorage();renderAll();renderTrash();return}if(!userId)return;const collectionName=type==='project'?'projects':'sources';const docRef=doc(db,`users/${userId}/${collectionName}`,id);try{await updateDoc(docRef,{deleted:false})}catch(error){console.error(`Erro ao restaurar ${type}:`,error)}}
         
         function confirmDeletePermanently(type, id) { const item = type === 'project' ? projects.find(p => p.id === id) : sources.find(s => s.id === id); if (!item) return; if (confirm(`EXCLUIR PERMANENTEMENTE "${item.name}"? Esta ação é irreversível.`)) { deleteItemPermanently(type, id); } }
         
-        async function deleteItemPermanently(type, id) { if (!userId) return; const collectionName = type === 'project' ? 'projects' : 'sources'; const docRef = doc(db, `users/${userId}/${collectionName}`, id); try { await deleteDoc(docRef); } catch (error) { console.error(`Erro ao excluir ${type} permanentemente:`, error); } }
+        async function deleteItemPermanently(type, id) { if(localTestMode){if(type==='project'){projects=projects.filter(p=>p.id!==id)}else if(type==='source'){sources=sources.filter(s=>s.id!==id)}saveDataToLocalStorage();renderAll();renderTrash();return}if(!userId)return;const collectionName=type==='project'?'projects':'sources';const docRef=doc(db,`users/${userId}/${collectionName}`,id);try{await deleteDoc(docRef)}catch(error){console.error(`Erro ao excluir ${type} permanentemente:`,error)}}
         
         function confirmClearTrash() { if (confirm("Tem certeza que deseja esvaziar a lixeira? Todos os itens serão excluídos permanentemente.")) { clearTrash(); } }
         
-        async function clearTrash() { if (!userId) return; const batch = writeBatch(db); projects.filter(p => p.deleted).forEach(p => { const docRef = doc(db, `users/${userId}/projects`, p.id); batch.delete(docRef); }); sources.filter(s => s.deleted).forEach(s => { const docRef = doc(db, `users/${userId}/sources`, s.id); batch.delete(docRef); }); try { await batch.commit(); } catch (error) { console.error("Erro ao esvaziar a lixeira:", error); } }
+        async function clearTrash() { if(localTestMode){projects=projects.filter(p=>!p.deleted);sources=sources.filter(s=>!s.deleted);saveDataToLocalStorage();renderAll();renderTrash();return}if(!userId)return;const batch=writeBatch(db);projects.filter(p=>p.deleted).forEach(p=>{const docRef=doc(db,`users/${userId}/projects`,p.id);batch.delete(docRef)});sources.filter(s=>s.deleted).forEach(s=>{const docRef=doc(db,`users/${userId}/sources`,s.id);batch.delete(docRef)});try{await batch.commit()}catch(error){console.error("Erro ao esvaziar a lixeira:",error)}}
         
         const renderAll = () => { renderTotalBalance(); renderProjects(); renderInvestmentSources(); if (currentProjectId) { renderSectorIndicators(); } };
         
@@ -708,8 +728,46 @@
         
         const renderTrash = () => { const deletedProjectsList = document.getElementById('deleted-projects-list'); const deletedSourcesList = document.getElementById('deleted-sources-list'); deletedProjectsList.innerHTML = ''; deletedSourcesList.innerHTML = ''; const deletedProjects = projects.filter(p => p.deleted); const deletedSources = sources.filter(s => s.deleted); if (deletedProjects.length === 0) { deletedProjectsList.innerHTML = '<p class="text-gray-500 dark:text-gray-400 text-center">Nenhum projeto na lixeira.</p>'; } else { deletedProjects.forEach(p => { const item = document.createElement('div'); item.className = 'trash-item'; item.innerHTML = `<div class="flex-grow"><p class="font-bold">${p.name}</p></div><div class="flex gap-2"><button onclick="restoreItem('project', '${p.id}')" class="text-blue-500 hover:text-blue-700">Restaurar</button><button onclick="confirmDeletePermanently('project', '${p.id}')" class="text-red-500 hover:text-red-700">Excluir</button></div>`; deletedProjectsList.appendChild(item); }); } if (deletedSources.length === 0) { deletedSourcesList.innerHTML = '<p class="text-gray-500 dark:text-gray-400 text-center">Nenhuma fonte na lixeira.</p>'; } else { deletedSources.forEach(s => { const item = document.createElement('div'); item.className = 'trash-item'; item.innerHTML = `<div class="flex-grow"><p class="font-bold">${s.name}</p><p class="text-sm text-gray-500 dark:text-gray-400">${s.type}</p></div><div class="flex gap-2"><button onclick="restoreItem('source', '${s.id}')" class="text-blue-500 hover:text-blue-700">Restaurar</button><button onclick="confirmDeletePermanently('source', '${s.id}')" class="text-red-500 hover:text-red-700">Excluir</button></div>`; deletedSourcesList.appendChild(item); }); } };
 
+        // --- INICIALIZAÇÃO GERAL ---
         document.addEventListener('DOMContentLoaded', () => {
-            // --- PROFILE MENU ---
+
+            if (firebaseConfig.apiKey === "SUA_API_KEY") {
+                document.getElementById('landing-buttons').classList.add('hidden');
+                document.getElementById('firebase-config-error').classList.remove('hidden');
+                // We show the local test button even if firebase is not configured
+                const localTestButton = document.createElement('button');
+                localTestButton.onclick = handleLocalTest;
+                localTestButton.className = "w-full text-sm text-gray-500 dark:text-gray-400 font-semibold py-2 px-4 rounded-lg hover:underline";
+                localTestButton.textContent = "Entrar sem Login (Teste Local)";
+                document.getElementById('firebase-config-error').appendChild(localTestButton);
+                return;
+            }
+
+            // Inicializa o Firebase
+            app = initializeApp(firebaseConfig);
+            auth = getAuth(app);
+            db = getFirestore(app);
+
+            // Inicia o listener de autenticação
+            onAuthStateChanged(auth, user => {
+                if (user) {
+                    userId = user.uid;
+                    authContainer.classList.add('hidden');
+                    loadingView.classList.remove('hidden');
+                    document.getElementById('user-email-display').textContent = user.isAnonymous ? 'Modo Demonstração' : user.email;
+                    startFirestoreListeners();
+                } else {
+                    userId = null;
+                    unsubscribeProjects();
+                    unsubscribeSources();
+                    appContainer.classList.add('hidden');
+                    loadingView.classList.add('hidden');
+                    authContainer.classList.remove('hidden');
+                    switchAuthView('landing-view');
+                }
+            });
+
+            // --- LISTENERS DE EVENTOS DA UI ---
             document.getElementById('profile-button').addEventListener('click', () => { document.getElementById('profile-menu').classList.toggle('hidden') });
             document.addEventListener('click', e => {
                 const menu = document.getElementById('profile-menu');
@@ -722,17 +780,22 @@
             // --- FORM SUBMISSIONS ---
             document.getElementById('project-form').addEventListener('submit', async (e) => {
                 e.preventDefault();
-                if (!userId) return;
                 const projectName = e.target.elements['project-name'].value;
                 if (!projectName) return;
                 
-                const projectsCollectionPath = `/users/${userId}/projects`;
-                
-                try {
-                    await addDoc(collection(db, projectsCollectionPath), { name: projectName, transactions: [], deleted: false });
-                    closeModal('project-modal');
-                    e.target.reset();
-                } catch (error) { console.error("Erro ao criar projeto:", error); }
+                if (localTestMode) {
+                    projects.push({ id: `proj_${Date.now()}`, name: projectName, transactions: [], deleted: false });
+                    saveDataToLocalStorage();
+                    renderAll();
+                } else {
+                    if (!userId) return;
+                    const projectsCollectionPath = `/users/${userId}/projects`;
+                    try {
+                        await addDoc(collection(db, projectsCollectionPath), { name: projectName, transactions: [], deleted: false });
+                    } catch (error) { console.error("Erro ao criar projeto:", error); }
+                }
+                closeModal('project-modal');
+                e.target.reset();
             });
 
             document.getElementById('investment-action-type').addEventListener('change', updateInvestmentFormUI);
@@ -742,52 +805,58 @@
                 const form = e.target;
                 const actionType = form.elements['investment-action-type'].value;
                 const project = projects.find(p => p.id === currentProjectId);
-                if (!project || !userId) return;
+                if (!project) return;
 
-                if (actionType === 'source') {
-                    const name = form.elements['inv-source-name'].value;
-                    const type = form.elements['inv-source-type'].value;
-                    const balance = parseFloat(form.elements['inv-source-balance'].value);
-                    if (!name || !type || isNaN(balance)) return;
+                if (localTestMode) {
+                     if (actionType === 'source') {
+                        const name = form.elements['inv-source-name'].value;
+                        const type = form.elements['inv-source-type'].value;
+                        const balance = parseFloat(form.elements['inv-source-balance'].value);
+                        if (!name || !type || isNaN(balance)) return;
+                        const newSource = { id: `src_${Date.now()}`, name, type, balance, deleted: false };
+                        sources.push(newSource);
+                        project.transactions.push({ type: 'revenue', description: `Nova Fonte: ${name}`, amount: balance, sector: 'Financeiro', subSector: 'Investimento', sourceId: newSource.id, date: new Date().toISOString().split('T')[0] });
+                    } else {
+                        const sourceId = form.elements['inv-cost-source'].value;
+                        const source = sources.find(s => s.id === sourceId);
+                        if (!sourceId || !source) return;
+                        const amount = parseFloat(form.elements['inv-cost-amount'].value);
+                        source.balance -= amount;
+                        project.transactions.push({ type: 'cost', description: form.elements['inv-cost-description'].value, amount: amount, sector: 'Financeiro', subSector: 'Investimento', sourceId: sourceId, date: form.elements['inv-cost-date'].value });
+                    }
+                    saveDataToLocalStorage();
+                    renderAll();
+                } else {
+                     if (!userId) return;
+                     if (actionType === 'source') {
+                        const name = form.elements['inv-source-name'].value;
+                        const type = form.elements['inv-source-type'].value;
+                        const balance = parseFloat(form.elements['inv-source-balance'].value);
+                        if (!name || !type || isNaN(balance)) return;
 
-                    const sourcesCollectionPath = `/users/${userId}/sources`;
-                    const newSourceRef = await addDoc(collection(db, sourcesCollectionPath), { name, type, balance, deleted: false });
+                        const sourcesCollectionPath = `/users/${userId}/sources`;
+                        const newSourceRef = await addDoc(collection(db, sourcesCollectionPath), { name, type, balance, deleted: false });
 
-                    const projectDocRef = doc(db, `users/${userId}/projects`, project.id);
-                    await updateDoc(projectDocRef, {
-                        transactions: arrayUnion({
-                            type: 'revenue',
-                            description: `Nova Fonte: ${name}`,
-                            amount: balance,
-                            sector: 'Financeiro',
-                            subSector: 'Investimento',
-                            sourceId: newSourceRef.id,
-                            date: new Date().toISOString().split('T')[0]
-                        })
-                    });
-                } else { // 'cost'
-                    const sourceId = form.elements['inv-cost-source'].value;
-                    const source = sources.find(s => s.id === sourceId);
-                    if (!sourceId || !source) return;
+                        const projectDocRef = doc(db, `users/${userId}/projects`, project.id);
+                        await updateDoc(projectDocRef, {
+                            transactions: arrayUnion({ type: 'revenue', description: `Nova Fonte: ${name}`, amount: balance, sector: 'Financeiro', subSector: 'Investimento', sourceId: newSourceRef.id, date: new Date().toISOString().split('T')[0] })
+                        });
+                    } else { // 'cost'
+                        const sourceId = form.elements['inv-cost-source'].value;
+                        const source = sources.find(s => s.id === sourceId);
+                        if (!sourceId || !source) return;
 
-                    const amount = parseFloat(form.elements['inv-cost-amount'].value);
-                    const newBalance = source.balance - amount;
-                    
-                    const sourceDocRef = doc(db, `users/${userId}/sources`, sourceId);
-                    await updateDoc(sourceDocRef, { balance: newBalance });
-                    
-                    const projectDocRef = doc(db, `users/${userId}/projects`, project.id);
-                    await updateDoc(projectDocRef, {
-                        transactions: arrayUnion({
-                            type: 'cost',
-                            description: form.elements['inv-cost-description'].value,
-                            amount: amount,
-                            sector: 'Financeiro',
-                            subSector: 'Investimento',
-                            sourceId: sourceId,
-                            date: form.elements['inv-cost-date'].value
-                        })
-                    });
+                        const amount = parseFloat(form.elements['inv-cost-amount'].value);
+                        const newBalance = source.balance - amount;
+                        
+                        const sourceDocRef = doc(db, `users/${userId}/sources`, sourceId);
+                        await updateDoc(sourceDocRef, { balance: newBalance });
+                        
+                        const projectDocRef = doc(db, `users/${userId}/projects`, project.id);
+                        await updateDoc(projectDocRef, {
+                            transactions: arrayUnion({ type: 'cost', description: form.elements['inv-cost-description'].value, amount: amount, sector: 'Financeiro', subSector: 'Investimento', sourceId: sourceId, date: form.elements['inv-cost-date'].value })
+                        });
+                    }
                 }
                 closeModal('investment-modal');
             });
@@ -796,22 +865,19 @@
                 e.preventDefault();
                 const form = e.target;
                 const project = projects.find(p => p.id === currentProjectId);
-                if (!project || !userId) return console.error('Projeto inválido ou usuário não logado.');
-
+                if (!project) return;
+                
                 const sourceId = form.elements['transaction-source'].value;
                 const source = sources.find(s => s.id === sourceId);
-                if (!source) return console.error('Fonte de Recurso inválida.');
+                if (!source) return;
 
                 const amount = parseFloat(form.elements['transaction-amount'].value);
                 const type = form.elements['transaction-type'].value;
                 const newBalance = source.balance + (type === 'revenue' ? amount : -amount);
                 
-                const sourceDocRef = doc(db, `users/${userId}/sources`, sourceId);
-                await updateDoc(sourceDocRef, { balance: newBalance });
-
-                const projectDocRef = doc(db, `users/${userId}/projects`, project.id);
-                await updateDoc(projectDocRef, {
-                    transactions: arrayUnion({
+                if (localTestMode) {
+                    source.balance = newBalance;
+                    project.transactions.push({
                         type: type,
                         description: form.elements['transaction-description'].value,
                         amount: amount,
@@ -819,8 +885,27 @@
                         subSector: form.elements['transaction-subsector'].value,
                         sourceId: sourceId,
                         date: form.elements['transaction-date'].value
-                    })
-                });
+                    });
+                    saveDataToLocalStorage();
+                    renderAll();
+                } else {
+                    if (!userId) return console.error('Usuário não logado.');
+                    const sourceDocRef = doc(db, `users/${userId}/sources`, sourceId);
+                    await updateDoc(sourceDocRef, { balance: newBalance });
+
+                    const projectDocRef = doc(db, `users/${userId}/projects`, project.id);
+                    await updateDoc(projectDocRef, {
+                        transactions: arrayUnion({
+                            type: type,
+                            description: form.elements['transaction-description'].value,
+                            amount: amount,
+                            sector: form.elements['transaction-sector'].value,
+                            subSector: form.elements['transaction-subsector'].value,
+                            sourceId: sourceId,
+                            date: form.elements['transaction-date'].value
+                        })
+                    });
+                }
 
                 closeModal('transaction-modal');
             });
@@ -841,9 +926,9 @@
         window.switchAuthView = switchAuthView;
         window.handleLogout = handleLogout;
         window.handleAnonymousLogin = handleAnonymousLogin;
+        window.handleLocalTest = handleLocalTest;
         window.switchView=switchView;window.openModal=openModal;window.closeModal=closeModal;window.closeModalOnOutsideClick=closeModalOnOutsideClick;window.openTransactionModal=openTransactionModal;window.openInvestmentModal=openInvestmentModal;window.showResults=showResults;window.filterDashboardCharts=filterDashboardCharts;window.filterDashboardView=filterDashboardView;window.filterSectorDashboardCharts=filterSectorDashboardCharts;window.filterSectorView=filterSectorView;window.filterHistoryPeriod=filterHistoryPeriod;window.moveItemToTrash=moveItemToTrash;window.restoreItem=restoreItem;window.confirmDeletePermanently=confirmDeletePermanently;window.confirmClearTrash=confirmClearTrash;
     </script>
 </body>
 </html>
-"
 
