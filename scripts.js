@@ -2,11 +2,12 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebas
 import { 
     getAuth, onAuthStateChanged, createUserWithEmailAndPassword, 
     signInWithEmailAndPassword, signOut, sendPasswordResetEmail,
-    signInAnonymously
+    GoogleAuthProvider,
+    signInWithPopup 
 } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
 import { 
     getFirestore, doc, onSnapshot, collection, 
-    addDoc, updateDoc, deleteDoc, writeBatch, arrayUnion
+    addDoc, updateDoc, deleteDoc, writeBatch, arrayUnion, setDoc
 } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
 // --- REFERÊNCIAS GLOBAIS ---
@@ -53,10 +54,28 @@ const switchAuthView = (viewId) => {
     document.getElementById(viewId).classList.remove('hidden');
 };
 
-const handleSignup = (email, password) => {
+// >>> GARANTA QUE SUA FUNÇÃO 'handleSignup' ESTEJA ASSIM <<<
+const handleSignup = async (email, password, name, phone) => {
     if (!auth) return;
-    createUserWithEmailAndPassword(auth, email, password)
-        .catch(error => alert(`Erro no cadastro: ${error.message}`));
+
+    try {
+        // 1. Cria o usuário no Firebase Authentication
+        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+        const user = userCredential.user;
+
+        // 2. Cria um documento de perfil no Firestore
+        // O caminho será "users/{ID_DO_NOVO_USUARIO}"
+        await setDoc(doc(db, "users", user.uid), {
+            name: name,
+            phone: phone,
+            email: email,
+            createdAt: new Date() // Boa prática
+        });
+
+    } catch (error) {
+        console.error("Erro no cadastro:", error);
+        alert(`Erro no cadastro: ${error.message}`);
+    }
 };
 const handleLogin = (email, password) => {
     if (!auth) return;
@@ -74,12 +93,44 @@ const handleLogout = () => {
     signOut(auth).catch(error => console.error('Erro no logout:', error));
 };
 
-const handleAnonymousLogin = () => {
+// >>> ADICIONE ESTA NOVA FUNÇÃO <<<
+const handleProfilePasswordReset = () => {
+    if (!auth || !auth.currentUser) {
+        return alert("Você precisa estar logado para trocar a senha.");
+    }
+
+    // Verifica se o usuário logou com email/senha
+    const isEmailUser = auth.currentUser.providerData.some(
+        (provider) => provider.providerId === 'password'
+    );
+
+    if (!isEmailUser) {
+        return alert("Esta função está disponível apenas para usuários cadastrados com e-mail e senha.");
+    }
+
+    const userEmail = auth.currentUser.email;
+    if (confirm(`Enviaremos um link de redefinição de senha para ${userEmail}. Deseja continuar?`)) {
+        sendPasswordResetEmail(auth, userEmail)
+            .then(() => {
+                alert("Link enviado! Verifique sua caixa de entrada.");
+            })
+            .catch((error) => {
+                console.error("Erro ao enviar e-mail de redefinição:", error);
+                alert(`Ocorreu um erro: ${error.message}`);
+            });
+    }
+};
+
+const handleGoogleLogin = () => {
     if (!auth) return;
-    signInAnonymously(auth)
-        .catch(error => {
-            console.error("Erro no login anônimo:", error);
-            alert("Não foi possível entrar no modo demonstração. Tente novamente.");
+    const provider = new GoogleAuthProvider();
+    signInWithPopup(auth, provider)
+        .then((result) => {
+            // O onAuthStateChanged vai cuidar do resto.
+            console.log("Usuário logado com Google:", result.user.displayName);
+        }).catch((error) => {
+            console.error("Erro no login com Google:", error);
+            alert(`Erro ao tentar logar com Google: ${error.message}`);
         });
 };
 
@@ -435,11 +486,24 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     document.getElementById('signup-form').addEventListener('submit', e => {
-        e.preventDefault();
-        const email = document.getElementById('signup-email').value;
-        const password = document.getElementById('signup-password').value;
-        handleSignup(email, password);
-    });
+    e.preventDefault();
+
+    // Coleta todos os dados do formulário
+    const name = document.getElementById('signup-name').value;
+    const phone = document.getElementById('signup-phone').value;
+    const email = document.getElementById('signup-email').value;
+    const password = document.getElementById('signup-password').value;
+    const confirmPassword = document.getElementById('signup-confirm-password').value;
+
+    // Validação de segurança no lado do cliente
+    if (password !== confirmPassword) {
+        alert("As senhas não coincidem. Por favor, tente novamente.");
+        return; // Interrompe a execução se as senhas forem diferentes
+    }
+
+    // Se a validação passar, chama a função de cadastro
+    handleSignup(email, password, name, phone);
+});
 
     document.getElementById('login-form').addEventListener('submit', e => {
         e.preventDefault();
@@ -581,9 +645,6 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 // Expondo funções para o escopo global para que os `onclick` no HTML funcionem
-window.switchAuthView = switchAuthView;
-window.handleLogout = handleLogout;
-window.handleAnonymousLogin = handleAnonymousLogin;
-
-window.switchView=switchView;window.openModal=openModal;window.closeModal=closeModal;window.closeModalOnOutsideClick=closeModalOnOutsideClick;window.openTransactionModal=openTransactionModal;window.openInvestmentModal=openInvestmentModal;window.showResults=showResults;window.filterDashboardCharts=filterDashboardCharts;window.filterDashboardView=filterDashboardView;window.filterSectorDashboardCharts=filterSectorDashboardCharts;window.filterSectorView=filterSectorView;window.filterHistoryPeriod=filterHistoryPeriod;window.moveItemToTrash=moveItemToTrash;window.restoreItem=restoreItem;window.confirmDeletePermanently=confirmDeletePermanently;window.confirmClearTrash=confirmClearTrash;
+window.switchAuthView = switchAuthView;window.handleLogout = handleLogout;
+window.handleGoogleLogin = handleGoogleLogin;window.handleProfilePasswordReset = handleProfilePasswordReset;window.switchView=switchView;window.openModal=openModal;window.closeModal=closeModal;window.closeModalOnOutsideClick=closeModalOnOutsideClick;window.openTransactionModal=openTransactionModal;window.openInvestmentModal=openInvestmentModal;window.showResults=showResults;window.filterDashboardCharts=filterDashboardCharts;window.filterDashboardView=filterDashboardView;window.filterSectorDashboardCharts=filterSectorDashboardCharts;window.filterSectorView=filterSectorView;window.filterHistoryPeriod=filterHistoryPeriod;window.moveItemToTrash=moveItemToTrash;window.restoreItem=restoreItem;window.confirmDeletePermanently=confirmDeletePermanently;window.confirmClearTrash=confirmClearTrash;
 
