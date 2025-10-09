@@ -7,7 +7,7 @@ import {
 } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
 import { 
     getFirestore, doc, onSnapshot, collection, 
-    addDoc, updateDoc, deleteDoc, writeBatch, arrayUnion, setDoc
+    addDoc, updateDoc, deleteDoc, writeBatch, arrayUnion, setDoc, arrayRemove
 } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
 // --- REFERÊNCIAS GLOBAIS ---
@@ -171,6 +171,23 @@ function startFirestoreListeners() {
     });
 }
 
+async function getDollarExchangeRate() {
+    try {
+        const response = await fetch('https://economia.awesomeapi.com.br/last/USD-BRL');
+        if (!response.ok) {
+            throw new Error('Não foi possível obter a cotação do dólar.');
+        }
+        const data = await response.json();
+        // O 'bid' é o preço de compra, que usaremos para a conversão.
+        const exchangeRate = parseFloat(data.USDBRL.bid);
+        return exchangeRate;
+    } catch (error) {
+        console.error("Erro ao buscar cotação:", error);
+        // Em caso de erro, retornamos null para que a lógica principal saiba lidar com a falha.
+        return null; 
+    }
+}
+
 // --- FUNÇÕES DE RENDERIZAÇÃO E DADOS ---
 const saveDataToLocalStorage = () => {
     localStorage.setItem('projectManagerData', JSON.stringify({ sources, projects }));
@@ -230,20 +247,42 @@ const renderInvestmentSources = () => {
     list.innerHTML = '';
     const activeSources = sources.filter(s => !s.deleted);
 
-    if (activeSources.length === 0) {
+
+     if (activeSources.length === 0) {
         list.innerHTML = `<p class="text-gray-500 dark:text-gray-400 text-center">Nenhuma fonte de investimento cadastrada.</p>`;
         return;
     }
+
     activeSources.forEach(source => {
         const item = document.createElement('div');
         item.className = 'source-item';
+
+        let usdInfoHtml = '';
+        if (source.type === 'Dólar' && source.originalUsdAmount) {
+            const formattedUsd = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(source.originalUsdAmount);
+            usdInfoHtml = `<p class="text-xs text-gray-500 dark:text-gray-400 -mt-1">${formattedUsd}</p>`;
+        }
+
+        // Constrói o título, adicionando o nome do projeto se ele existir
+        let titleHtml = `<p class="font-bold">${source.name}</p>`;
+        if (source.projectName) {
+            titleHtml = `<p class="font-bold">${source.projectName} | ${source.name}</p>`;
+        }
+
         item.innerHTML = `
-            <div class="flex-grow">
-                <p class="font-bold">${source.name}</p>
+            <div>
+                ${titleHtml}
                 <p class="text-sm text-gray-500 dark:text-gray-400">${source.type}</p>
             </div>
-            <p class="font-bold text-lg ${source.balance >= 0 ? 'text-green-600' : 'text-red-600'} mr-4">${formatCurrency(source.balance)}</p>
-            <button onclick="moveItemToTrash(null, 'source', '${source.id}')" class="text-gray-400 hover:text-red-500"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg></button>`;
+            <div class="flex items-center gap-4">
+                <div class="text-right">
+                    <p class="font-bold text-lg ${source.balance >= 0 ? 'text-green-600' : 'text-red-600'}">${formatCurrency(source.balance)}</p>
+                    ${usdInfoHtml}
+                </div>
+                <button onclick="moveItemToTrash(null, 'source', '${source.id}')" class="text-gray-400 hover:text-red-500">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                </button>
+            </div>`;
         list.appendChild(item);
     });
 };
@@ -287,8 +326,85 @@ function closeModalOnOutsideClick(event) { if (event.target.id.endsWith('-modal'
 
 const openTransactionModal = (sector, subSector) => { const project = projects.find(p => p.id === currentProjectId); if (!project) return; const form = document.getElementById('transaction-form'); form.reset(); document.getElementById('transaction-project-name').textContent = `${project.name} / ${sector} / ${subSector}`; form.elements['transaction-sector'].value = sector; form.elements['transaction-subsector'].value = subSector; form.elements['transaction-date'].valueAsDate = new Date(); const sourceSelect = document.getElementById('transaction-source'); sourceSelect.innerHTML = ''; if (sources.filter(s => !s.deleted).length === 0) { sourceSelect.innerHTML = '<option value="" disabled selected>Nenhuma fonte criada</option>'; } else { sources.filter(s => !s.deleted).forEach(source => { const option = document.createElement('option'); option.value = source.id; option.textContent = `${source.name} (${source.type})`; sourceSelect.appendChild(option); }); } openModal('transaction-modal'); };
 
-const openInvestmentModal = () => { const project = projects.find(p => p.id === currentProjectId); if (!project) { return alert("Por favor, selecione um projeto na tela inicial antes de realizar uma ação de investimento."); } document.getElementById('investment-form').reset(); document.getElementById('investment-project-name').textContent = `${project.name} / Financeiro / Investimento`; const sourceSelect = document.getElementById('inv-cost-source'); sourceSelect.innerHTML = ''; if (sources.filter(s => !s.deleted).length === 0) { sourceSelect.innerHTML = '<option value="" disabled selected>Nenhuma fonte criada</option>'; } else { sources.filter(s => !s.deleted).forEach(source => { const option = document.createElement('option'); option.value = source.id; option.textContent = `${source.name} (${source.type})`; sourceSelect.appendChild(option); }); } document.getElementById('inv-cost-date').valueAsDate = new Date(); updateInvestmentFormUI(); openModal('investment-modal'); };
+const openInvestmentModal = () => {
+    const project = projects.find(p => p.id === currentProjectId);
+    if (!project) {
+        return alert("Por favor, selecione um projeto na tela inicial antes de realizar uma ação de investimento.");
+    }
 
+    // Limpa e prepara o formulário
+    const form = document.getElementById('investment-form');
+    form.reset();
+    document.getElementById('investment-project-name').textContent = `${project.name} / Financeiro / Investimento`;
+    
+    const sourceSelect = document.getElementById('inv-cost-source');
+    sourceSelect.innerHTML = '';
+    const activeSources = sources.filter(s => !s.deleted);
+    if (activeSources.length === 0) {
+        sourceSelect.innerHTML = '<option value="" disabled selected>Nenhuma fonte criada</option>';
+    } else {
+        activeSources.forEach(source => {
+            const option = document.createElement('option');
+            option.value = source.id;
+            option.textContent = `${source.name} (${source.type})`;
+            sourceSelect.appendChild(option);
+        });
+    }
+    document.getElementById('inv-cost-date').valueAsDate = new Date();
+    
+    // --- LÓGICA DE CONVERSÃO DO DÓLAR (AGORA DENTRO DO MODAL) ---
+    const investmentTypeSelect = document.getElementById('inv-source-type');
+    const investmentAmountInput = document.getElementById('inv-source-balance');
+    const conversionDisplay = document.getElementById('usd-conversion-display');
+    const brlValueDisplay = document.getElementById('brl-converted-value');
+    const amountLabel = document.querySelector('label[for="inv-source-balance"]');
+    
+    let currentExchangeRate = null;
+
+    // Garante que a UI comece no estado padrão (não-dólar)
+    amountLabel.textContent = 'Saldo Inicial';
+    investmentAmountInput.placeholder = "1000.00";
+    conversionDisplay.classList.add('hidden');
+    
+    const changeListener = async (e) => {
+        if (e.target.value === 'Dólar') {
+            amountLabel.textContent = 'Valor em Dólar (USD)';
+            investmentAmountInput.placeholder = "500.00";
+            conversionDisplay.classList.remove('hidden');
+            currentExchangeRate = await getDollarExchangeRate();
+            if (!currentExchangeRate) alert("Atenção: Não foi possível carregar a cotação do Dólar.");
+            await updateBRLValue();
+        } else {
+            amountLabel.textContent = 'Saldo Inicial';
+            investmentAmountInput.placeholder = "1000.00";
+            conversionDisplay.classList.add('hidden');
+        }
+    };
+
+    const updateBRLValue = async () => {
+        if (investmentTypeSelect.value !== 'Dólar') return;
+        if (!currentExchangeRate) {
+            currentExchangeRate = await getDollarExchangeRate();
+        }
+        if (currentExchangeRate) {
+            const usdAmount = parseFloat(investmentAmountInput.value) || 0;
+            const brlAmount = usdAmount * currentExchangeRate;
+            brlValueDisplay.textContent = formatCurrency(brlAmount);
+        } else {
+            brlValueDisplay.textContent = "Erro na cotação";
+        }
+    };
+
+    // Adiciona os listeners. Usamos .remove para evitar duplicatas se o modal for aberto várias vezes.
+    investmentTypeSelect.removeEventListener('change', changeListener);
+    investmentTypeSelect.addEventListener('change', changeListener);
+
+    investmentAmountInput.removeEventListener('input', updateBRLValue);
+    investmentAmountInput.addEventListener('input', updateBRLValue);
+    
+    updateInvestmentFormUI();
+    openModal('investment-modal');
+};
 const updateInvestmentFormUI = () => { const actionType = document.getElementById('investment-action-type').value; const sourceFields = document.getElementById('investment-source-fields'); const costFields = document.getElementById('investment-cost-fields'); if (actionType === 'source') { sourceFields.classList.remove('hidden'); costFields.classList.add('hidden'); } else { sourceFields.classList.add('hidden'); costFields.classList.remove('hidden'); } };
 
 const updateNavActiveState = (activeViewId) => {
@@ -394,8 +510,58 @@ const populateFilters = () => { const sectorSelect = document.getElementById('se
 
 const updateSubsectorFilter = () => { const sector = document.getElementById('sector-filter').value; const subsectorSelect = document.getElementById('subsector-filter'); subsectorSelect.innerHTML = ''; (subsectorsBySector[sector] || []).forEach(sub => { const value = sub.toLowerCase().includes('todos') ? 'all' : sub; subsectorSelect.innerHTML += `<option value="${value}">${sub}</option>`; }); subsectorSelect.value = historyFilters.subsector; };
 
-async function moveItemToTrash(event, type, id) { if (event) event.stopPropagation(); if(localTestMode){if(type==='project'){const project=projects.find(p=>p.id===id);if(project)project.deleted=true}else if(type==='source'){const source=sources.find(s=>s.id===id);if(source)source.deleted=true}saveDataToLocalStorage();renderAll();return}if(!userId)return;const collectionName=type==='project'?'projects':'sources';const docRef=doc(db,`users/${userId}/${collectionName}`,id);try{await updateDoc(docRef,{deleted:true})}catch(error){console.error(`Erro ao mover ${type} para a lixeira:`,error)}}
+async function moveItemToTrash(event, type, id) {
+    if (event) event.stopPropagation();
+    if (!userId) return;
 
+    // A lógica para deletar projetos permanece a mesma
+    if (type === 'project') {
+        const docRef = doc(db, `users/${userId}/projects`, id);
+        try {
+            await updateDoc(docRef, { deleted: true });
+        } catch (error) {
+            console.error("Erro ao mover projeto para a lixeira:", error);
+        }
+    } 
+    // Lógica aprimorada para fontes de investimento
+    else if (type === 'source') {
+        // 1. Encontra a fonte em nossa lista local para obter o ID do projeto
+        const sourceToDelete = sources.find(s => s.id === id);
+        if (!sourceToDelete) {
+            return console.error("Fonte não encontrada para exclusão.");
+        }
+
+        // Prepara uma operação em lote para garantir consistência
+        const batch = writeBatch(db);
+
+        // 2. Marca a fonte como deletada
+        const sourceRef = doc(db, `users/${userId}/sources`, id);
+        batch.update(sourceRef, { deleted: true });
+
+        // 3. Se a fonte estiver vinculada a um projeto, remove a transação correspondente
+        if (sourceToDelete.projectId) {
+            const projectToUpdate = projects.find(p => p.id === sourceToDelete.projectId);
+            if (projectToUpdate) {
+                // Encontra a transação de receita inicial exata a ser removida
+                const transactionToRemove = (projectToUpdate.transactions || []).find(
+                    t => t.sourceId === id && t.description.includes('Nova Fonte')
+                );
+
+                if (transactionToRemove) {
+                    const projectRef = doc(db, `users/${userId}/projects`, sourceToDelete.projectId);
+                    batch.update(projectRef, { transactions: arrayRemove(transactionToRemove) });
+                }
+            }
+        }
+
+        // 4. Executa ambas as operações (atualizar fonte e projeto) de uma vez
+        try {
+            await batch.commit();
+        } catch (error) {
+            console.error("Erro em lote ao mover fonte para a lixeira:", error);
+        }
+    }
+}
 async function restoreItem(type, id) { if(localTestMode){if(type==='project'){const project=projects.find(p=>p.id===id);if(project)project.deleted=false}else if(type==='source'){const source=sources.find(s=>s.id===id);if(source)source.deleted=false}saveDataToLocalStorage();renderAll();renderTrash();return}if(!userId)return;const collectionName=type==='project'?'projects':'sources';const docRef=doc(db,`users/${userId}/${collectionName}`,id);try{await updateDoc(docRef,{deleted:false})}catch(error){console.error(`Erro ao restaurar ${type}:`,error)}}
 
 function confirmDeletePermanently(type, id) { const item = type === 'project' ? projects.find(p => p.id === id) : sources.find(s => s.id === id); if (!item) return; if (confirm(`EXCLUIR PERMANENTEMENTE "${item.name}"? Esta ação é irreversível.`)) { deleteItemPermanently(type, id); } }
@@ -521,66 +687,87 @@ document.addEventListener('DOMContentLoaded', () => {
 
     document.getElementById('investment-action-type').addEventListener('change', updateInvestmentFormUI);
 
-    document.getElementById('investment-form').addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const form = e.target;
-        const actionType = form.elements['investment-action-type'].value;
-        const project = projects.find(p => p.id === currentProjectId);
-        if (!project) return;
+    // >>> SUBSTITUA O LISTENER DO 'investment-form' INTEIRO POR ESTE BLOCO <<<
 
-        if (localTestMode) {
-             if (actionType === 'source') {
-                const name = form.elements['inv-source-name'].value;
-                const type = form.elements['inv-source-type'].value;
-                const balance = parseFloat(form.elements['inv-source-balance'].value);
-                if (!name || !type || isNaN(balance)) return;
-                const newSource = { id: `src_${Date.now()}`, name, type, balance, deleted: false };
-                sources.push(newSource);
-                project.transactions.push({ type: 'revenue', description: `Nova Fonte: ${name}`, amount: balance, sector: 'Financeiro', subSector: 'Investimento', sourceId: newSource.id, date: new Date().toISOString().split('T')[0] });
-            } else {
-                const sourceId = form.elements['inv-cost-source'].value;
-                const source = sources.find(s => s.id === sourceId);
-                if (!sourceId || !source) return;
-                const amount = parseFloat(form.elements['inv-cost-amount'].value);
-                source.balance -= amount;
-                project.transactions.push({ type: 'cost', description: form.elements['inv-cost-description'].value, amount: amount, sector: 'Financeiro', subSector: 'Investimento', sourceId: sourceId, date: form.elements['inv-cost-date'].value });
-            }
-            saveDataToLocalStorage();
-            renderAll();
+document.getElementById('investment-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const form = e.target;
+    const actionType = form.elements['investment-action-type'].value;
+    const project = projects.find(p => p.id === currentProjectId);
+    if (!project) return;
+
+    if (actionType === 'source') {
+    const name = form.elements['inv-source-name'].value;
+    const type = form.elements['inv-source-type'].value;
+    let balance = parseFloat(form.elements['inv-source-balance'].value);
+
+      if (!name || !type || isNaN(balance)) {
+        alert("Por favor, preencha todos os campos corretamente.");
+        return;
+    }
+
+    const sourceData = {
+        name: name,
+        type: type,
+        balance: balance, 
+        deleted: false,
+        projectId: currentProjectId,   
+        projectName: project.name
+    };
+
+        if (type === 'Dólar') {
+        const finalRate = await getDollarExchangeRate(); 
+        if (finalRate) {
+            const usdValue = balance;
+            sourceData.balance = usdValue * finalRate; // Atualiza o balance para o valor em BRL
+            sourceData.originalUsdAmount = usdValue; // <-- A MÁGICA ACONTECE AQUI
         } else {
-             if (!userId) return;
-             if (actionType === 'source') {
-                const name = form.elements['inv-source-name'].value;
-                const type = form.elements['inv-source-type'].value;
-                const balance = parseFloat(form.elements['inv-source-balance'].value);
-                if (!name || !type || isNaN(balance)) return;
-
-                const sourcesCollectionPath = `/users/${userId}/sources`;
-                const newSourceRef = await addDoc(collection(db, sourcesCollectionPath), { name, type, balance, deleted: false });
-
-                const projectDocRef = doc(db, `users/${userId}/projects`, project.id);
-                await updateDoc(projectDocRef, {
-                    transactions: arrayUnion({ type: 'revenue', description: `Nova Fonte: ${name}`, amount: balance, sector: 'Financeiro', subSector: 'Investimento', sourceId: newSourceRef.id, date: new Date().toISOString().split('T')[0] })
-                });
-            } else { // 'cost'
-                const sourceId = form.elements['inv-cost-source'].value;
-                const source = sources.find(s => s.id === sourceId);
-                if (!sourceId || !source) return;
-
-                const amount = parseFloat(form.elements['inv-cost-amount'].value);
-                const newBalance = source.balance - amount;
-                
-                const sourceDocRef = doc(db, `users/${userId}/sources`, sourceId);
-                await updateDoc(sourceDocRef, { balance: newBalance });
-                
-                const projectDocRef = doc(db, `users/${userId}/projects`, project.id);
-                await updateDoc(projectDocRef, {
-                    transactions: arrayUnion({ type: 'cost', description: form.elements['inv-cost-description'].value, amount: amount, sector: 'Financeiro', subSector: 'Investimento', sourceId: sourceId, date: form.elements['inv-cost-date'].value })
-                });
-            }
+            alert("ERRO: Não foi possível obter a cotação para salvar. A transação não foi concluída.");
+            return;
         }
-        closeModal('investment-modal');
-    });
+    }
+        
+         if (!userId) return;
+    try {
+        const sourcesCollectionPath = `/users/${userId}/sources`;
+        const newSourceRef = await addDoc(collection(db, sourcesCollectionPath), sourceData);
+
+        const projectDocRef = doc(db, `users/${userId}/projects`, project.id);
+        await updateDoc(projectDocRef, {
+            transactions: arrayUnion({ type: 'revenue', description: `Nova Fonte: ${name}`, amount: sourceData.balance, sector: 'Financeiro', subSector: 'Investimento', sourceId: newSourceRef.id, date: new Date().toISOString().split('T')[0] })
+        });
+    } catch (error) {
+        console.error("Erro ao salvar nova fonte de investimento:", error);
+        alert("Ocorreu um erro ao salvar os dados.");
+    }
+
+    } else { // 'cost'
+        // A lógica de custo de investimento permanece a mesma
+        const sourceId = form.elements['inv-cost-source'].value;
+        const source = sources.find(s => s.id === sourceId);
+        if (!sourceId || !source) return;
+
+        const amount = parseFloat(form.elements['inv-cost-amount'].value);
+        const newBalance = source.balance - amount;
+        
+        if (!userId) return;
+        try {
+            const sourceDocRef = doc(db, `users/${userId}/sources`, sourceId);
+            await updateDoc(sourceDocRef, { balance: newBalance });
+            
+            const projectDocRef = doc(db, `users/${userId}/projects`, project.id);
+            await updateDoc(projectDocRef, {
+                transactions: arrayUnion({ type: 'cost', description: form.elements['inv-cost-description'].value, amount: amount, sector: 'Financeiro', subSector: 'Investimento', sourceId: sourceId, date: form.elements['inv-cost-date'].value })
+            });
+        } catch (error) {
+            console.error("Erro ao salvar custo de investimento:", error);
+            alert("Ocorreu um erro ao salvar os dados.");
+        }
+    }
+    
+    closeModal('investment-modal');
+    form.reset(); // Limpa o formulário após a submissão
+});
 
     document.getElementById('transaction-form').addEventListener('submit', async (e) => {
         e.preventDefault();
